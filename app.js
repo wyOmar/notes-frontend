@@ -5,7 +5,6 @@ let localNotes = [];
 let activeNoteId = null;
 let saveTimeout = null;
 
-// Helper: Formats timestamps to "x minutes ago"
 function timeAgo(dateString) {
     if (!dateString) return "Unknown";
     const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
@@ -22,7 +21,6 @@ function timeAgo(dateString) {
     return "just now";
 }
 
-// Mobile Sidebar Toggle
 function toggleSidebar() {
     document.getElementById('app-sidebar').classList.toggle('open');
 }
@@ -60,7 +58,7 @@ async function fetchNotes(view) {
 }
 
 async function switchTab(tab) {
-    flushPendingSave(); // Bug Fix: Save current work synchronously before switching tabs
+    flushPendingSave(); 
 
     currentView = tab;
     document.getElementById('tab-active').classList.toggle('active', tab === 'active');
@@ -70,7 +68,7 @@ async function switchTab(tab) {
     document.getElementById('editor-empty').style.display = 'none';
     document.getElementById('editor-active').style.display = 'none';
     document.getElementById('gallery-view').style.display = 'none';
-    document.getElementById('app-sidebar').classList.remove('open'); // Close mobile menu
+    document.getElementById('app-sidebar').classList.remove('open'); 
 
     if (tab === 'gallery') {
         await fetchNotes('active'); 
@@ -97,7 +95,6 @@ function renderList() {
 
     let filtered = localNotes.filter(note => (note.title + note.content).toLowerCase().includes(query));
 
-    // Apply Sorting
     filtered.sort((a, b) => {
         const timeA = new Date(sortOrder.includes('edited') ? a.updatedAt : a.createdAt).getTime();
         const timeB = new Date(sortOrder.includes('edited') ? b.updatedAt : b.createdAt).getTime();
@@ -118,7 +115,7 @@ function renderList() {
         `;
         
         div.onclick = () => {
-            flushPendingSave(); // Bug Fix: Save previous note before loading the new one
+            flushPendingSave(); 
             loadNoteEditor(note._id);
         };
         listDiv.appendChild(div);
@@ -128,15 +125,14 @@ function renderList() {
 function loadNoteEditor(id) {
     activeNoteId = id;
     const note = localNotes.find(n => n._id === id);
-    renderList(); // Update selected style visually
-    document.getElementById('app-sidebar').classList.remove('open'); // Close mobile menu on select
+    renderList(); 
+    document.getElementById('app-sidebar').classList.remove('open'); 
 
     document.getElementById('editor-empty').style.display = 'none';
     document.getElementById('editor-active').style.display = 'flex';
     document.getElementById('editor-title').value = note.title;
     document.getElementById('editor-content').value = note.content;
     
-    // Updated Meta Display
     document.getElementById('meta-display').innerText = `Created: ${new Date(note.createdAt).toLocaleDateString()} | Updated: ${timeAgo(note.updatedAt)}`;
 
     const btnDelete = document.getElementById('btn-delete-note');
@@ -155,9 +151,6 @@ function loadNoteEditor(id) {
     renderImages(note.images);
 }
 
-// === BUG FIX: The Data Flush Logic ===
-// We only debounce while typing to prevent spamming the API.
-// We DO NOT rely on the 'blur' event anymore, which caused the race condition.
 document.getElementById('editor-title').addEventListener('input', scheduleSave);
 document.getElementById('editor-content').addEventListener('input', scheduleSave);
 
@@ -174,11 +167,10 @@ async function flushPendingSave(isAutoSave = false) {
     
     if (!activeNoteId || currentView === 'trash') return;
     
-    const idToSave = activeNoteId; // Lock the ID locally
+    const idToSave = activeNoteId; 
     const title = document.getElementById('editor-title').value;
     const content = document.getElementById('editor-content').value;
     
-    // Optimistic local update
     const idx = localNotes.findIndex(n => n._id === idToSave);
     if (idx !== -1) {
         localNotes[idx].title = title;
@@ -188,14 +180,12 @@ async function flushPendingSave(isAutoSave = false) {
     
     if (isAutoSave) {
         document.getElementById('meta-display').innerText = `Created: ${new Date(localNotes[idx].createdAt).toLocaleDateString()} | Updated: just now`;
-        renderList(); // Update timestamps in sidebar quietly
+        renderList(); 
     }
 
-    // Fire and forget API call
     api('PUT', `/${idToSave}`, { title, content }).catch(err => console.error("Save failed:", err));
 }
 
-// === UTILITIES ===
 async function copyNoteContent() {
     const title = document.getElementById('editor-title').value;
     const content = document.getElementById('editor-content').value;
@@ -231,7 +221,6 @@ async function restoreActiveNote() {
     await switchTab('trash');
 }
 
-// === MEDIA LOGIC ===
 window.addEventListener('paste', async (e) => {
     if (!activeNoteId || currentView === 'trash') return;
     const items = (e.clipboardData || e.originalEvent.clipboardData).items;
@@ -254,14 +243,18 @@ async function uploadImage(file) {
     fd.append('image', file);
     
     const ogTitle = document.getElementById('editor-title').value;
-    document.getElementById('editor-title').value = "Uploading Media...";
+    document.getElementById('editor-title').value = "Uploading Media & Analyzing...";
     
-    const newImg = await api('POST', `/${activeNoteId}/images`, fd, true);
-    document.getElementById('editor-title').value = ogTitle;
-    
-    const note = localNotes.find(n => n._id === activeNoteId);
-    note.images.push(newImg);
-    renderImages(note.images);
+    try {
+        const newImg = await api('POST', `/${activeNoteId}/images`, fd, true);
+        const note = localNotes.find(n => n._id === activeNoteId);
+        note.images.push(newImg);
+        renderImages(note.images);
+    } catch (err) {
+        alert("Upload or Vision API failed.");
+    } finally {
+        document.getElementById('editor-title').value = ogTitle;
+    }
 }
 
 function renderImages(images) {
@@ -278,6 +271,31 @@ function renderGlobalGallery() {
     });
 }
 
+// Helper: Renders the injected Vision HTML
+function renderVisionData(vision) {
+    if (!vision) return '';
+    let html = `<div class="vision-block">`;
+    
+    if (vision.labels && vision.labels.length > 0) {
+        html += `<strong>Labels (≥0.7):</strong><pre>${vision.labels.join('\n')}</pre>`;
+    }
+    if (vision.text) {
+        html += `<strong>Text Detection:</strong><pre>${vision.text}</pre>`;
+    }
+    if (vision.webGuesses && vision.webGuesses.length > 0) {
+        html += `<strong>Web Guesses:</strong><pre>${vision.webGuesses.join('\n')}</pre>`;
+    }
+    if (vision.webEntities && vision.webEntities.length > 0) {
+        html += `<strong>Web Entities (≥0.7):</strong><pre>${vision.webEntities.join('\n')}</pre>`;
+    }
+    if (vision.objects && vision.objects.length > 0) {
+        html += `<strong>Objects (≥0.7):</strong><pre>${vision.objects.join('\n')}</pre>`;
+    }
+    
+    html += `</div>`;
+    return html === `<div class="vision-block"></div>` ? '' : html;
+}
+
 function createImageCard(img, showDelete, noteId) {
     const card = document.createElement('div');
     card.className = 'img-card';
@@ -287,7 +305,9 @@ function createImageCard(img, showDelete, noteId) {
     let html = `
         <img src="${displaySrc}" onclick="openModal('${img.url}', '${noteId}')">
         <div class="meta">${(img.sizeBytes/1024).toFixed(1)}KB</div>
+        ${renderVisionData(img.visionData)}
     `;
+    
     if (showDelete) {
         html += `<button title="Delete Media" onclick="deleteImage('${img._id}')">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>

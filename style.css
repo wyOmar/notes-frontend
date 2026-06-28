@@ -127,3 +127,28 @@ button:hover, button.active { background: #000000; color: #ffffff; }
     .mobile-header { display: flex; justify-content: flex-start; }
     #editor-active { padding: 15px; }
 }
+
+/* Vision Metadata Block */
+.vision-block { 
+    border-top: 2px dashed #000000; 
+    margin-top: 10px; 
+    padding-top: 10px; 
+    font-size: 12px; 
+    font-family: monospace; 
+    text-align: left;
+    width: 100%;
+}
+.vision-block strong { 
+    background: #000000; 
+    color: #ffffff; 
+    padding: 2px 4px; 
+    display: block; 
+    margin: 10px 0 5px 0; 
+}
+.vision-block pre { 
+    margin: 0; 
+    white-space: pre-wrap; 
+    word-wrap: break-word; 
+    font-family: inherit; 
+    opacity: 0.8;
+}
