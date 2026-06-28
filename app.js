@@ -8,6 +8,10 @@ let saveTimeout = null;
 let loadedTitle = '';
 let loadedContent = '';
 
+// Gallery State for Lightbox Cycling
+let currentDisplayedImages = [];
+let currentModalImgId = null;
+
 const TICK_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 
 function showTick(btn) {
@@ -129,7 +133,10 @@ function renderList() {
             if (activeNoteId === note._id) {
                 activeNoteId = null;
                 document.getElementById('editor-active').style.display = 'none';
-                if (currentView === 'workspace') document.getElementById('gallery-view').style.display = 'block';
+                if (currentView === 'workspace') {
+                    document.getElementById('gallery-view').style.display = 'block';
+                    renderGlobalGallery();
+                }
                 renderList();
             } else {
                 loadNoteEditor(note._id);
@@ -166,6 +173,29 @@ function loadNoteEditor(id) {
         document.getElementById('editor-content').disabled = false;
     }
     renderImages(note.images);
+}
+
+function cycleNote(direction) {
+    if (!activeNoteId) return;
+    const query = document.getElementById('search-bar').value.toLowerCase();
+    const sortOrder = document.getElementById('sort-order').value;
+    
+    let filtered = localNotes.filter(note => note.title !== '__GLOBAL_MEDIA__' && (note.title + note.content).toLowerCase().includes(query));
+    filtered.sort((a, b) => {
+        const timeA = new Date(sortOrder.includes('edited') ? a.updatedAt : a.createdAt).getTime();
+        const timeB = new Date(sortOrder.includes('edited') ? b.updatedAt : b.createdAt).getTime();
+        return sortOrder.includes('desc') ? (timeB - timeA) : (timeA - timeB);
+    });
+
+    const currentIndex = filtered.findIndex(n => n._id === activeNoteId);
+    if (currentIndex === -1) return;
+
+    let nextIndex = currentIndex + direction;
+    if (nextIndex < 0) nextIndex = filtered.length - 1;
+    if (nextIndex >= filtered.length) nextIndex = 0;
+    
+    flushPendingSave();
+    loadNoteEditor(filtered[nextIndex]._id);
 }
 
 document.getElementById('editor-title').addEventListener('input', scheduleSave);
@@ -235,17 +265,72 @@ async function restoreActiveNote() {
     await switchTab('trash');
 }
 
-// === ESC & DRAG DROP ROUTING ===
+// === COMPREHENSIVE KEYBOARD ROUTING ===
 document.addEventListener('keydown', (e) => {
+    const modalOpen = document.getElementById('image-modal').style.display === 'flex';
+    
     if (e.key === 'Escape') {
-        if (document.getElementById('image-modal').style.display === 'flex') {
-            closeModal();
-        } else if (activeNoteId) {
+        if (modalOpen) closeModal();
+        else if (document.activeElement.classList.contains('img-card')) document.activeElement.blur();
+        else if (activeNoteId) {
             flushPendingSave();
             activeNoteId = null;
             document.getElementById('editor-active').style.display = 'none';
-            if (currentView === 'workspace') document.getElementById('gallery-view').style.display = 'block';
+            if (currentView === 'workspace') {
+                document.getElementById('gallery-view').style.display = 'block';
+                renderGlobalGallery();
+            }
             renderList();
+        }
+        return;
+    }
+
+    // Modal Cycle Let/Right
+    if (modalOpen) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            const dir = e.key === 'ArrowRight' ? 1 : -1;
+            const idx = currentDisplayedImages.findIndex(i => i.imgId === currentModalImgId);
+            if (idx !== -1) {
+                let nextIdx = idx + dir;
+                if (nextIdx < 0) nextIdx = currentDisplayedImages.length - 1;
+                if (nextIdx >= currentDisplayedImages.length) nextIdx = 0;
+                const nextImg = currentDisplayedImages[nextIdx];
+                openModal(nextImg.noteId, nextImg.imgId);
+            }
+        }
+        return;
+    }
+
+    // Note Up/Down Cycling
+    if (activeNoteId && currentView !== 'trash') {
+        const isTyping = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA';
+        if (!isTyping && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+            e.preventDefault();
+            cycleNote(e.key === 'ArrowUp' ? -1 : 1);
+        }
+        return;
+    }
+
+    // Gallery Focus-Visible Grid Navigation
+    if (!activeNoteId && currentView === 'workspace') {
+        const cards = Array.from(document.querySelectorAll('.img-card'));
+        if (cards.length > 0) {
+            if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                e.preventDefault();
+                let idx = cards.indexOf(document.activeElement);
+                if (idx === -1) idx = 0;
+                else {
+                    if (e.key === 'ArrowRight') idx++;
+                    if (e.key === 'ArrowLeft') idx--;
+                    if (e.key === 'ArrowDown') idx += 4; 
+                    if (e.key === 'ArrowUp') idx -= 4;
+                }
+                if (idx < 0) idx = 0;
+                if (idx >= cards.length) idx = cards.length - 1;
+                cards[idx].focus();
+            } else if (e.key === 'Enter' && document.activeElement.classList.contains('img-card')) {
+                document.activeElement.querySelector('img').click();
+            }
         }
     }
 });
@@ -282,7 +367,6 @@ async function uploadImage(file, targetId) {
     const fd = new FormData();
     fd.append('image', file);
     
-    // Optimistic UI Injection
     const localUrl = URL.createObjectURL(file);
     const tempId = 'temp-' + Date.now();
     const tempImg = { _id: tempId, url: localUrl, thumbUrl: localUrl, sizeBytes: file.size, isTemp: true };
@@ -308,6 +392,24 @@ async function uploadImage(file, targetId) {
 
         if (activeNoteId === targetId) renderImages(note.images);
         else if (currentView === 'workspace' && !activeNoteId) renderGlobalGallery();
+        
+        // BUG FIX 4 & 5: Silent Background Poll for Vision API Data
+        setTimeout(async () => {
+            try {
+                await fetchNotes('workspace');
+                const updatedNote = localNotes.find(n => n._id === (targetId === 'global' ? note._id : targetId));
+                if (updatedNote) {
+                    if (activeNoteId === targetId) {
+                        renderImages(updatedNote.images);
+                    } else if (currentView === 'workspace' && !activeNoteId) {
+                        renderGlobalGallery();
+                    }
+                    // Update modal if currently viewing this exact image
+                    if (currentModalImgId === newImg._id) openModal(updatedNote._id, newImg._id);
+                }
+            } catch(e) { console.error("Silent poll failed."); }
+        }, 5500);
+
     } catch (err) {
         note.images = note.images.filter(i => i._id !== tempId);
         if (activeNoteId === targetId) renderImages(note.images);
@@ -316,12 +418,17 @@ async function uploadImage(file, targetId) {
 }
 
 function renderImages(images) {
+    currentDisplayedImages = [];
     const gallery = document.getElementById('image-gallery');
     gallery.innerHTML = '';
-    images.forEach(img => gallery.appendChild(createImageCard(img, true, activeNoteId)));
+    images.forEach(img => {
+        currentDisplayedImages.push({ noteId: activeNoteId, imgId: img._id, url: img.url, visionData: img.visionData });
+        gallery.appendChild(createImageCard(img, true, activeNoteId));
+    });
 }
 
 function renderGlobalGallery() {
+    currentDisplayedImages = [];
     const query = document.getElementById('search-bar').value.toLowerCase();
     const globalGrid = document.getElementById('global-image-grid');
     globalGrid.innerHTML = '';
@@ -330,6 +437,7 @@ function renderGlobalGallery() {
         note.images.forEach(img => {
             let searchable = img.visionData ? JSON.stringify(img.visionData).toLowerCase() : "";
             if (!query || searchable.includes(query)) {
+                currentDisplayedImages.push({ noteId: note._id, imgId: img._id, url: img.url, visionData: img.visionData });
                 globalGrid.appendChild(createImageCard(img, true, note._id));
             }
         });
@@ -351,6 +459,7 @@ function renderVisionData(vision) {
 function createImageCard(img, showDelete, noteId) {
     const card = document.createElement('div');
     card.className = `img-card ${img.isTemp ? 'temp' : ''}`;
+    card.tabIndex = 0; 
     const displaySrc = img.thumbUrl || img.url; 
     
     let html = `
@@ -380,9 +489,6 @@ async function deleteImage(imgId, noteId) {
 }
 
 // === LIGHTBOX LOGIC ===
-let currentModalUrl = '';
-let currentModalNoteId = null;
-
 function openModal(noteId, imgId) {
     const note = localNotes.find(n => n._id === noteId);
     if (!note) return;
@@ -391,6 +497,7 @@ function openModal(noteId, imgId) {
 
     currentModalUrl = img.url;
     currentModalNoteId = noteId;
+    currentModalImgId = imgId;
 
     document.getElementById('modal-img').src = img.url; 
     document.getElementById('modal-vision-container').innerHTML = renderVisionData(img.visionData);
@@ -407,6 +514,7 @@ function closeModal(e) {
     document.getElementById('modal-img').src = ''; 
     document.getElementById('modal-vision-container').innerHTML = '';
     currentModalUrl = '';
+    currentModalImgId = null;
 }
 
 async function jumpToNote() {

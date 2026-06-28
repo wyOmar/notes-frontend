@@ -98,7 +98,11 @@ button:hover, button.active { background: #000000; color: #ffffff; }
 .image-header h4 { margin: 0; font-size: 18px; }
 
 #image-gallery, #global-image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
-.img-card { border: 2px solid #000000; padding: 5px; position: relative; background: #ffffff; }
+
+/* Keyboard Focus Logic for Images */
+.img-card { border: 2px solid #000000; padding: 5px; position: relative; background: #ffffff; outline: none; transition: transform 0.1s; }
+.img-card:focus-visible { border: 2px solid #000000; box-shadow: 0 0 0 4px #000000; transform: scale(1.02); z-index: 10; }
+
 .img-card img { width: 100%; height: 140px; object-fit: cover; display: block; cursor: zoom-in; }
 .img-card .meta { font-size: 12px; background: #000000; color: #ffffff; padding: 5px; text-align: center; margin-top: 5px;}
 .img-card button { position: absolute; top: 5px; right: 5px; background: #ffffff; color: #000000; padding: 4px; border: 2px solid #000000; }
@@ -124,10 +128,19 @@ button:hover, button.active { background: #000000; color: #ffffff; }
 .vision-block strong { background: #000000; color: #ffffff; padding: 2px 4px; display: block; margin: 10px 0 5px 0; }
 .vision-block pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: inherit; opacity: 0.8; }
 
+/* Mobile View Adjustments */
 @media (max-width: 768px) {
-    .sidebar { position: fixed; left: -100%; height: 100%; box-shadow: 5px 0 15px rgba(0,0,0,0.1); width: 85%; max-width: 380px; }
+    .sidebar { 
+        position: fixed; 
+        left: -100%; 
+        height: 100vh; 
+        box-shadow: 5px 0 15px rgba(0,0,0,0.5); 
+        width: 100vw; 
+        max-width: 100vw; 
+        z-index: 2000; 
+    }
     .sidebar.open { transform: translateX(100%); }
-    .mobile-header { display: flex; justify-content: flex-start; }
+    .mobile-header { display: flex; justify-content: flex-start; padding: 15px 20px; }
     #editor-active, #gallery-view { padding: 15px; }
     .modal-content { max-width: 95vw; padding: 40px 10px 20px 10px; }
 }
