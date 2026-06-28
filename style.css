@@ -69,10 +69,6 @@ button:hover, button.active { background: #000000; color: #ffffff; }
 .sidebar-controls { padding: 12px; border-bottom: 2px solid #000000; }
 .sidebar-controls input { margin-bottom: 10px; }
 
-.tabs { display: flex; border-bottom: 2px solid #000000; }
-.tabs button { flex: 1; border: none; border-right: 2px solid #000000; }
-.tabs button:last-child { border-right: none; }
-
 #notes-list { flex: 1; overflow-y: auto; background: #fafafa; }
 .list-item { 
     padding: 18px; 
@@ -88,7 +84,6 @@ button:hover, button.active { background: #000000; color: #ffffff; }
 /* Editor Pane */
 .mobile-header { display: none; padding: 10px 20px; border-bottom: 2px solid #000000; }
 .editor-pane { flex: 1; display: flex; flex-direction: column; background: #ffffff; overflow-y: auto; overflow-x: hidden; }
-#editor-empty { margin: auto; color: #000000; font-weight: bold; }
 #editor-active { display: flex; flex-direction: column; height: 100%; max-width: 1000px; margin: 0 auto; width: 100%; padding: 30px; }
 
 .editor-meta { font-size: 14px; color: #000000; margin-bottom: 15px; border-bottom: 2px dotted #000000; padding-bottom: 8px; }
@@ -109,9 +104,12 @@ button:hover, button.active { background: #000000; color: #ffffff; }
 .img-card button { position: absolute; top: 5px; right: 5px; background: #ffffff; color: #000000; padding: 4px; border: 2px solid #000000; }
 .img-card button:hover { background: #ff0000; color: #ffffff; border-color: #ff0000; }
 
+/* Optimistic UI Animation */
+.img-card.temp img { animation: pulse 1.5s infinite; opacity: 0.6; pointer-events: none; }
+@keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 0.8; } 100% { opacity: 0.4; } }
+
 /* Global Gallery View */
 #gallery-view { max-width: 1000px; margin: 0 auto; width: 100%; padding: 30px; }
-#gallery-view h2 { border-bottom: 2px solid #000000; padding-bottom: 15px; margin-bottom: 25px; }
 
 /* Lightbox Modal */
 .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
@@ -122,24 +120,14 @@ button:hover, button.active { background: #000000; color: #ffffff; }
 .modal-actions { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 15px; width: 100%; justify-content: center; }
 
 /* Vision Metadata Block */
-.vision-block { 
-    border-top: 2px dashed #000000; 
-    margin-top: 10px; 
-    padding-top: 10px; 
-    font-size: 12px; 
-    font-family: monospace; 
-    text-align: left;
-    width: 100%;
-}
-.vision-block strong { background: #000000; color: #ffffff; padding: 2px 4px; display: inline-block; margin: 10px 0 5px 0; }
+.vision-block { border-top: 2px dashed #000000; margin-top: 10px; padding-top: 10px; font-size: 12px; font-family: monospace; text-align: left; width: 100%; }
+.vision-block strong { background: #000000; color: #ffffff; padding: 2px 4px; display: block; margin: 10px 0 5px 0; }
 .vision-block pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: inherit; opacity: 0.8; }
 
-/* Mobile View Adjustments */
 @media (max-width: 768px) {
     .sidebar { position: fixed; left: -100%; height: 100%; box-shadow: 5px 0 15px rgba(0,0,0,0.1); width: 85%; max-width: 380px; }
     .sidebar.open { transform: translateX(100%); }
     .mobile-header { display: flex; justify-content: flex-start; }
-    #editor-active { padding: 15px; }
-    #gallery-view { padding: 15px; }
+    #editor-active, #gallery-view { padding: 15px; }
     .modal-content { max-width: 95vw; padding: 40px 10px 20px 10px; }
 }

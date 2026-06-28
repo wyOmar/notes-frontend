@@ -1,13 +1,20 @@
 const API_URL = 'https://api.vincentchan.uk/api/notes';
 let masterKey = '';
-let currentView = 'active'; 
+let currentView = 'workspace'; 
 let localNotes = [];
 let activeNoteId = null;
 let saveTimeout = null;
 
-// State Tracking to prevent phantom edits
 let loadedTitle = '';
 let loadedContent = '';
+
+const TICK_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+function showTick(btn) {
+    const og = btn.innerHTML;
+    btn.innerHTML = TICK_SVG;
+    setTimeout(() => btn.innerHTML = og, 2000);
+}
 
 function timeAgo(dateString) {
     if (!dateString) return "Unknown";
@@ -25,19 +32,24 @@ function timeAgo(dateString) {
     return "just now";
 }
 
-function toggleSidebar() {
-    document.getElementById('app-sidebar').classList.toggle('open');
+function formatExactDate(dateString) {
+    if (!dateString) return "Unknown";
+    const d = new Date(dateString);
+    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 }
+
+function toggleSidebar() { document.getElementById('app-sidebar').classList.toggle('open'); }
 
 async function authenticate() {
     masterKey = document.getElementById('master-pwd').value;
     if (!masterKey) return;
     document.getElementById('error-message').innerText = 'Decrypting...';
     try {
-        await fetchNotes('active');
+        await fetchNotes('workspace');
         document.getElementById('auth-layer').style.display = 'none';
         document.getElementById('workspace').style.display = 'flex';
         renderList();
+        renderGlobalGallery();
     } catch (e) {
         document.getElementById('error-message').innerText = 'Access Denied.';
     }
@@ -47,10 +59,7 @@ async function api(method, endpoint, body = null, isFormData = false) {
     const options = { method, headers: { 'x-api-key': masterKey } };
     if (body) {
         if (isFormData) options.body = body;
-        else {
-            options.headers['Content-Type'] = 'application/json';
-            options.body = JSON.stringify(body);
-        }
+        else { options.headers['Content-Type'] = 'application/json'; options.body = JSON.stringify(body); }
     }
     const res = await fetch(`${API_URL}${endpoint}`, options);
     if (!res.ok) throw new Error('API Fault');
@@ -63,48 +72,41 @@ async function fetchNotes(view) {
 
 async function switchTab(tab) {
     flushPendingSave(); 
-
     currentView = tab;
-    document.getElementById('tab-active').classList.toggle('active', tab === 'active');
-    document.getElementById('tab-gallery').classList.toggle('active', tab === 'gallery');
-    document.getElementById('tab-trash').classList.toggle('active', tab === 'trash');
     
-    document.getElementById('editor-empty').style.display = 'none';
+    document.getElementById('tab-trash').style.display = tab === 'trash' ? 'none' : 'block';
+    document.getElementById('btn-workspace').style.display = tab === 'trash' ? 'block' : 'none';
+    
     document.getElementById('editor-active').style.display = 'none';
-    document.getElementById('gallery-view').style.display = 'none';
     document.getElementById('app-sidebar').classList.remove('open'); 
-
-    // Reset search bar visually
     document.getElementById('search-bar').value = '';
 
-    if (tab === 'gallery') {
-        await fetchNotes('active'); 
+    if (tab === 'workspace') {
+        await fetchNotes('workspace'); 
+        activeNoteId = null;
         document.getElementById('gallery-view').style.display = 'block';
         renderGlobalGallery();
-        document.getElementById('notes-list').innerHTML = ''; 
+        renderList();
     } else {
-        await fetchNotes(tab);
-        document.getElementById('editor-empty').style.display = 'block';
+        await fetchNotes('trash');
+        activeNoteId = null;
+        document.getElementById('gallery-view').style.display = 'none';
         renderList();
     }
-    activeNoteId = null;
 }
 
-// Global Search Routing
 document.getElementById('search-bar').addEventListener('input', () => {
-    if (currentView === 'gallery') renderGlobalGallery();
-    else renderList();
+    if (!activeNoteId && currentView === 'workspace') renderGlobalGallery();
+    renderList();
 });
 
 function renderList() {
-    if (currentView === 'gallery') return; 
-    
     const query = document.getElementById('search-bar').value.toLowerCase();
     const sortOrder = document.getElementById('sort-order').value;
     const listDiv = document.getElementById('notes-list');
     listDiv.innerHTML = '';
 
-    let filtered = localNotes.filter(note => (note.title + note.content).toLowerCase().includes(query));
+    let filtered = localNotes.filter(note => note.title !== '__GLOBAL_MEDIA__' && (note.title + note.content).toLowerCase().includes(query));
 
     filtered.sort((a, b) => {
         const timeA = new Date(sortOrder.includes('edited') ? a.updatedAt : a.createdAt).getTime();
@@ -118,16 +120,20 @@ function renderList() {
         
         const dateString = sortOrder.includes('edited') 
             ? `Edited ${timeAgo(note.updatedAt)}` 
-            : `Created ${timeAgo(note.createdAt)}`;
+            : `Created ${formatExactDate(note.createdAt)}`;
 
-        div.innerHTML = `
-            <div>${note.title || 'Untitled'}</div>
-            <div class="meta-text">${dateString}</div>
-        `;
+        div.innerHTML = `<div>${note.title || 'Untitled'}</div><div class="meta-text">${dateString}</div>`;
         
         div.onclick = () => {
             flushPendingSave(); 
-            loadNoteEditor(note._id);
+            if (activeNoteId === note._id) {
+                activeNoteId = null;
+                document.getElementById('editor-active').style.display = 'none';
+                if (currentView === 'workspace') document.getElementById('gallery-view').style.display = 'block';
+                renderList();
+            } else {
+                loadNoteEditor(note._id);
+            }
         };
         listDiv.appendChild(div);
     });
@@ -137,23 +143,19 @@ function loadNoteEditor(id) {
     activeNoteId = id;
     const note = localNotes.find(n => n._id === id);
     
-    // Set base state tracking to prevent phantom edits
     loadedTitle = note.title || '';
     loadedContent = note.content || '';
 
     renderList(); 
     document.getElementById('app-sidebar').classList.remove('open'); 
-
-    document.getElementById('editor-empty').style.display = 'none';
+    document.getElementById('gallery-view').style.display = 'none';
     document.getElementById('editor-active').style.display = 'flex';
     document.getElementById('editor-title').value = note.title;
     document.getElementById('editor-content').value = note.content;
     
-    document.getElementById('meta-display').innerText = `Created: ${new Date(note.createdAt).toLocaleDateString()} | Updated: ${timeAgo(note.updatedAt)}`;
+    document.getElementById('meta-display').innerText = `Created: ${formatExactDate(note.createdAt)} | Updated: ${timeAgo(note.updatedAt)}`;
 
-    const btnDelete = document.getElementById('btn-delete-note');
     const btnRestore = document.getElementById('btn-restore-note');
-    
     if (currentView === 'trash') {
         btnRestore.style.display = 'inline-flex';
         document.getElementById('editor-title').disabled = true;
@@ -163,7 +165,6 @@ function loadNoteEditor(id) {
         document.getElementById('editor-title').disabled = false;
         document.getElementById('editor-content').disabled = false;
     }
-
     renderImages(note.images);
 }
 
@@ -176,21 +177,15 @@ function scheduleSave() {
 }
 
 async function flushPendingSave(isAutoSave = false) {
-    if (saveTimeout) {
-        clearTimeout(saveTimeout);
-        saveTimeout = null;
-    }
-    
+    if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
     if (!activeNoteId || currentView === 'trash') return;
     
     const idToSave = activeNoteId; 
     const title = document.getElementById('editor-title').value;
     const content = document.getElementById('editor-content').value;
     
-    // BUG FIX: Abort if no changes were actually made
     if (title === loadedTitle && content === loadedContent) return;
 
-    // Update state tracking
     loadedTitle = title;
     loadedContent = content;
 
@@ -202,28 +197,24 @@ async function flushPendingSave(isAutoSave = false) {
     }
     
     if (isAutoSave) {
-        document.getElementById('meta-display').innerText = `Created: ${new Date(localNotes[idx].createdAt).toLocaleDateString()} | Updated: just now`;
+        document.getElementById('meta-display').innerText = `Created: ${formatExactDate(localNotes[idx].createdAt)} | Updated: just now`;
         renderList(); 
     }
-
     api('PUT', `/${idToSave}`, { title, content }).catch(err => console.error("Save failed:", err));
 }
 
-async function copyNoteContent() {
+async function copyNoteContent(btn) {
     const title = document.getElementById('editor-title').value;
     const content = document.getElementById('editor-content').value;
-    const fullText = `${title}\n\n${content}`;
     try {
-        await navigator.clipboard.writeText(fullText);
-        alert('Record copied to clipboard.');
-    } catch (err) {
-        alert('Failed to copy.');
-    }
+        await navigator.clipboard.writeText(`${title}\n\n${content}`);
+        showTick(btn);
+    } catch (err) {}
 }
 
 async function createNewNote() {
     flushPendingSave();
-    if(currentView !== 'active') await switchTab('active');
+    if(currentView !== 'workspace') await switchTab('workspace');
     const note = await api('POST', '');
     localNotes.unshift(note);
     loadNoteEditor(note._id);
@@ -244,39 +235,83 @@ async function restoreActiveNote() {
     await switchTab('trash');
 }
 
+// === ESC & DRAG DROP ROUTING ===
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (document.getElementById('image-modal').style.display === 'flex') {
+            closeModal();
+        } else if (activeNoteId) {
+            flushPendingSave();
+            activeNoteId = null;
+            document.getElementById('editor-active').style.display = 'none';
+            if (currentView === 'workspace') document.getElementById('gallery-view').style.display = 'block';
+            renderList();
+        }
+    }
+});
+
 window.addEventListener('paste', async (e) => {
-    if (!activeNoteId || currentView === 'trash') return;
+    if (currentView === 'trash') return;
     const items = (e.clipboardData || e.originalEvent.clipboardData).items;
     for (let index in items) {
         if (items[index].kind === 'file') {
             e.preventDefault();
-            await uploadImage(items[index].getAsFile());
+            await uploadImage(items[index].getAsFile(), activeNoteId || 'global');
+        }
+    }
+});
+
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', async e => {
+    e.preventDefault();
+    if (currentView === 'trash') return;
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+        for (let file of files) {
+            if (file.type.startsWith('image/')) await uploadImage(file, activeNoteId || 'global');
         }
     }
 });
 
 async function handleManualUpload(e) {
-    if (e.target.files[0]) await uploadImage(e.target.files[0]);
+    if (e.target.files[0]) await uploadImage(e.target.files[0], activeNoteId || 'global');
     e.target.value = ''; 
 }
 
-async function uploadImage(file) {
-    if (!activeNoteId) return;
+async function uploadImage(file, targetId) {
     const fd = new FormData();
     fd.append('image', file);
     
-    const ogTitle = document.getElementById('editor-title').value;
-    document.getElementById('editor-title').value = "Uploading Media & Analyzing...";
+    // Optimistic UI Injection
+    const localUrl = URL.createObjectURL(file);
+    const tempId = 'temp-' + Date.now();
+    const tempImg = { _id: tempId, url: localUrl, thumbUrl: localUrl, sizeBytes: file.size, isTemp: true };
+
+    let note;
+    if (targetId === 'global') {
+        note = localNotes.find(n => n.title === '__GLOBAL_MEDIA__');
+        if (!note) { note = { _id: 'global', title: '__GLOBAL_MEDIA__', images: [] }; localNotes.push(note); }
+    } else {
+        note = localNotes.find(n => n._id === targetId);
+    }
+
+    if (note) {
+        note.images.push(tempImg);
+        if (activeNoteId === targetId) renderImages(note.images);
+        else if (currentView === 'workspace' && !activeNoteId) renderGlobalGallery();
+    }
     
     try {
-        const newImg = await api('POST', `/${activeNoteId}/images`, fd, true);
-        const note = localNotes.find(n => n._id === activeNoteId);
-        note.images.push(newImg);
-        renderImages(note.images);
+        const newImg = await api('POST', `/${targetId}/images`, fd, true);
+        const idx = note.images.findIndex(i => i._id === tempId);
+        if (idx !== -1) note.images[idx] = newImg;
+
+        if (activeNoteId === targetId) renderImages(note.images);
+        else if (currentView === 'workspace' && !activeNoteId) renderGlobalGallery();
     } catch (err) {
-        alert("Upload or Vision API failed.");
-    } finally {
-        document.getElementById('editor-title').value = ogTitle;
+        note.images = note.images.filter(i => i._id !== tempId);
+        if (activeNoteId === targetId) renderImages(note.images);
+        else if (currentView === 'workspace' && !activeNoteId) renderGlobalGallery();
     }
 }
 
@@ -293,13 +328,9 @@ function renderGlobalGallery() {
     
     localNotes.forEach(note => {
         note.images.forEach(img => {
-            let searchable = "";
-            if (img.visionData) {
-                // Compile vision metadata into a searchable string block
-                searchable = JSON.stringify(img.visionData).toLowerCase();
-            }
+            let searchable = img.visionData ? JSON.stringify(img.visionData).toLowerCase() : "";
             if (!query || searchable.includes(query)) {
-                globalGrid.appendChild(createImageCard(img, false, note._id));
+                globalGrid.appendChild(createImageCard(img, true, note._id));
             }
         });
     });
@@ -308,55 +339,43 @@ function renderGlobalGallery() {
 function renderVisionData(vision) {
     if (!vision) return '';
     let html = `<div class="vision-block">`;
-    
-    if (vision.labels && vision.labels.length > 0) {
-        html += `<strong>Labels (≥0.7):</strong><pre>${vision.labels.join('\n')}</pre>`;
-    }
-    if (vision.text) {
-        html += `<strong>Text Detection:</strong><pre>${vision.text}</pre>`;
-    }
-    if (vision.webGuesses && vision.webGuesses.length > 0) {
-        html += `<strong>Web Guesses:</strong><pre>${vision.webGuesses.join('\n')}</pre>`;
-    }
-    if (vision.webEntities && vision.webEntities.length > 0) {
-        html += `<strong>Web Entities (≥0.7):</strong><pre>${vision.webEntities.join('\n')}</pre>`;
-    }
-    if (vision.objects && vision.objects.length > 0) {
-        html += `<strong>Objects (≥0.7):</strong><pre>${vision.objects.join('\n')}</pre>`;
-    }
-    
+    if (vision.labels && vision.labels.length > 0) html += `<strong>Labels (≥0.7):</strong><pre>${vision.labels.join('\n')}</pre>`;
+    if (vision.text) html += `<strong>Text Detection:</strong><pre>${vision.text}</pre>`;
+    if (vision.webGuesses && vision.webGuesses.length > 0) html += `<strong>Web Guesses:</strong><pre>${vision.webGuesses.join('\n')}</pre>`;
+    if (vision.webEntities && vision.webEntities.length > 0) html += `<strong>Web Entities (≥0.7):</strong><pre>${vision.webEntities.join('\n')}</pre>`;
+    if (vision.objects && vision.objects.length > 0) html += `<strong>Objects (≥0.7):</strong><pre>${vision.objects.join('\n')}</pre>`;
     html += `</div>`;
     return html === `<div class="vision-block"></div>` ? '' : html;
 }
 
 function createImageCard(img, showDelete, noteId) {
     const card = document.createElement('div');
-    card.className = 'img-card';
+    card.className = `img-card ${img.isTemp ? 'temp' : ''}`;
     const displaySrc = img.thumbUrl || img.url; 
     
-    // Vision rendering explicitly removed from thumbnail view
     let html = `
-        <img src="${displaySrc}" onclick="openModal('${noteId}', '${img._id}')">
+        <img src="${displaySrc}" onclick="${img.isTemp ? '' : `openModal('${noteId}', '${img._id}')`}">
         <div class="meta">${(img.sizeBytes/1024).toFixed(1)}KB</div>
     `;
-    
-    if (showDelete) {
-        html += `<button title="Delete Media" onclick="deleteImage('${img._id}')">
+    if (showDelete && !img.isTemp) {
+        html += `<button title="Delete Media" onclick="deleteImage('${img._id}', '${noteId}')">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                  </button>`;
     }
-    
     card.innerHTML = html;
     return card;
 }
 
-async function deleteImage(imgId) {
+async function deleteImage(imgId, noteId) {
     if (confirm("Remove this media?")) {
         const force = currentView === 'trash';
-        await api('DELETE', `/${activeNoteId}?imageId=${imgId}&force=${force}`);
-        const note = localNotes.find(n => n._id === activeNoteId);
-        note.images = note.images.filter(i => i._id !== imgId);
-        renderImages(note.images);
+        await api('DELETE', `/${noteId}?imageId=${imgId}&force=${force}`);
+        const note = localNotes.find(n => n._id === noteId);
+        if (note) {
+            note.images = note.images.filter(i => i._id !== imgId);
+            if (activeNoteId === noteId) renderImages(note.images);
+            else if (currentView === 'workspace' && !activeNoteId) renderGlobalGallery();
+        }
     }
 }
 
@@ -377,15 +396,13 @@ function openModal(noteId, imgId) {
     document.getElementById('modal-vision-container').innerHTML = renderVisionData(img.visionData);
     
     const jumpBtn = document.getElementById('btn-jump-note');
-    jumpBtn.style.display = (currentView === 'gallery' && noteId) ? 'flex' : 'none';
+    jumpBtn.style.display = (!activeNoteId && note.title !== '__GLOBAL_MEDIA__') ? 'flex' : 'none';
     
     document.getElementById('image-modal').style.display = 'flex';
 }
 
 function closeModal(e) {
-    // Only close if clicking exactly on the dark background or the button
     if (e && e.target.id !== 'image-modal' && !e.target.classList.contains('close-modal')) return;
-    
     document.getElementById('image-modal').style.display = 'none';
     document.getElementById('modal-img').src = ''; 
     document.getElementById('modal-vision-container').innerHTML = '';
@@ -394,19 +411,16 @@ function closeModal(e) {
 
 async function jumpToNote() {
     closeModal();
-    await switchTab('active');
     loadNoteEditor(currentModalNoteId);
 }
 
-async function copyModalImage() {
+async function copyModalImage(btn) {
     try {
         const response = await fetch(currentModalUrl);
         const blob = await response.blob();
         await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-        alert('Media copied to clipboard.');
-    } catch (err) {
-        alert('Clipboard API unsupported in this browser for images.');
-    }
+        showTick(btn);
+    } catch (err) {}
 }
 
 async function downloadModalImage() {
