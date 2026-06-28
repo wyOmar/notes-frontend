@@ -5,34 +5,17 @@ let localNotes = [];
 let activeNoteId = null;
 let saveTimeout = null;
 
-// Helper: Time Ago Formatter
-function timeAgo(dateString) {
-    if (!dateString) return "Unknown date";
-    const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + " yrs ago";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " mos ago";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " days ago";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " hrs ago";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " mins ago";
-    return "just now";
-}
-
 async function authenticate() {
     masterKey = document.getElementById('master-pwd').value;
     if (!masterKey) return;
-    document.getElementById('error-message').innerText = 'Decrypting...';
+    document.getElementById('error-message').innerText = '> DECRYPTING...';
     try {
-        await fetchNotes();
+        await fetchNotes('active');
         document.getElementById('auth-layer').style.display = 'none';
         document.getElementById('workspace').style.display = 'flex';
         renderList();
     } catch (e) {
-        document.getElementById('error-message').innerText = 'Access Denied';
+        document.getElementById('error-message').innerText = '> ACCESS_DENIED';
     }
 }
 
@@ -46,57 +29,51 @@ async function api(method, endpoint, body = null, isFormData = false) {
         }
     }
     const res = await fetch(`${API_URL}${endpoint}`, options);
-    if (!res.ok) throw new Error('API Error');
+    if (!res.ok) throw new Error('API_FAULT');
     return res.json();
 }
 
-async function fetchNotes() {
-    localNotes = await api('GET', `?trash=${currentView === 'trash'}`);
+async function fetchNotes(view) {
+    localNotes = await api('GET', `?trash=${view === 'trash'}`);
 }
 
 async function switchTab(tab) {
     currentView = tab;
     document.getElementById('tab-active').classList.toggle('active', tab === 'active');
+    document.getElementById('tab-gallery').classList.toggle('active', tab === 'gallery');
     document.getElementById('tab-trash').classList.toggle('active', tab === 'trash');
-    activeNoteId = null;
+    
+    document.getElementById('editor-empty').style.display = 'none';
     document.getElementById('editor-active').style.display = 'none';
-    document.getElementById('editor-empty').style.display = 'block';
-    await fetchNotes();
-    renderList();
+    document.getElementById('gallery-view').style.display = 'none';
+
+    if (tab === 'gallery') {
+        await fetchNotes('active'); 
+        document.getElementById('gallery-view').style.display = 'block';
+        renderGlobalGallery();
+        document.getElementById('notes-list').innerHTML = ''; 
+    } else {
+        await fetchNotes(tab);
+        document.getElementById('editor-empty').style.display = 'block';
+        renderList();
+    }
+    activeNoteId = null;
 }
 
 document.getElementById('search-bar').addEventListener('input', renderList);
 
 function renderList() {
+    if (currentView === 'gallery') return; 
     const query = document.getElementById('search-bar').value.toLowerCase();
-    const sortOrder = document.getElementById('sort-order').value;
     const listDiv = document.getElementById('notes-list');
     listDiv.innerHTML = '';
 
-    let filtered = localNotes.filter(note => {
-        return (note.title + note.content).toLowerCase().includes(query);
-    });
-
-    // Apply Sorting
-    filtered.sort((a, b) => {
-        const timeA = new Date(sortOrder.includes('edited') ? a.updatedAt : a.createdAt).getTime();
-        const timeB = new Date(sortOrder.includes('edited') ? b.updatedAt : b.createdAt).getTime();
-        return sortOrder.includes('desc') ? (timeB - timeA) : (timeA - timeB);
-    });
+    const filtered = localNotes.filter(note => (note.title + note.content).toLowerCase().includes(query));
 
     filtered.forEach(note => {
         const div = document.createElement('div');
         div.className = `list-item ${note._id === activeNoteId ? 'selected' : ''}`;
-        
-        const titleText = note.title || 'Untitled Note';
-        const dateText = sortOrder.includes('edited') 
-            ? `Edited ${timeAgo(note.updatedAt)}` 
-            : `Created ${timeAgo(note.createdAt)}`;
-
-        div.innerHTML = `
-            <div class="item-title">${titleText}</div>
-            <div class="item-meta">${dateText}</div>
-        `;
+        div.innerText = note.title || 'UNTITLED';
         div.onclick = () => loadNoteEditor(note._id);
         listDiv.appendChild(div);
     });
@@ -109,23 +86,20 @@ function loadNoteEditor(id) {
 
     document.getElementById('editor-empty').style.display = 'none';
     document.getElementById('editor-active').style.display = 'flex';
-    
     document.getElementById('editor-title').value = note.title;
     document.getElementById('editor-content').value = note.content;
-    
-    document.getElementById('meta-display').innerText = `Created: ${new Date(note.createdAt).toLocaleDateString()} | Last Edited: ${timeAgo(note.updatedAt)}`;
+    document.getElementById('meta-display').innerText = `CREATED: ${new Date(note.createdAt).toLocaleDateString()}`;
 
-    // Manage Buttons
     const btnDelete = document.getElementById('btn-delete-note');
     const btnRestore = document.getElementById('btn-restore-note');
     
     if (currentView === 'trash') {
-        btnDelete.innerText = 'Permanently Delete';
+        btnDelete.innerText = '[ FORCE_DELETE ]';
         btnRestore.style.display = 'inline-block';
         document.getElementById('editor-title').disabled = true;
         document.getElementById('editor-content').disabled = true;
     } else {
-        btnDelete.innerText = 'Delete Note';
+        btnDelete.innerText = '[ DELETE_RECORD ]';
         btnRestore.style.display = 'none';
         document.getElementById('editor-title').disabled = false;
         document.getElementById('editor-content').disabled = false;
@@ -151,19 +125,15 @@ async function saveActiveNote() {
     if (!activeNoteId || currentView === 'trash') return;
     const title = document.getElementById('editor-title').value;
     const content = document.getElementById('editor-content').value;
-    
     await api('PUT', `/${activeNoteId}`, { title, content });
-    
     const idx = localNotes.findIndex(n => n._id === activeNoteId);
     localNotes[idx].title = title;
     localNotes[idx].content = content;
-    localNotes[idx].updatedAt = new Date().toISOString();
     renderList();
-    document.getElementById('meta-display').innerText = `Created: ${new Date(localNotes[idx].createdAt).toLocaleDateString()} | Last Edited: just now`;
 }
 
 async function createNewNote() {
-    if(currentView === 'trash') await switchTab('active');
+    if(currentView !== 'active') await switchTab('active');
     const note = await api('POST', '');
     localNotes.unshift(note);
     loadNoteEditor(note._id);
@@ -171,11 +141,9 @@ async function createNewNote() {
 
 async function deleteActiveNote() {
     if (!activeNoteId) return;
-    if (confirm("Are you sure you want to delete this note?")) {
-        const force = currentView === 'trash';
-        await api('DELETE', `/${activeNoteId}?force=${force}`);
-        await switchTab(currentView);
-    }
+    const force = currentView === 'trash';
+    await api('DELETE', `/${activeNoteId}?force=${force}`);
+    await switchTab(currentView);
 }
 
 async function restoreActiveNote() {
@@ -184,15 +152,14 @@ async function restoreActiveNote() {
     await switchTab('trash');
 }
 
-// === IMAGES ===
-document.getElementById('editor-content').addEventListener('paste', async (e) => {
-    if (currentView === 'trash') return;
+// === IMAGE LOGIC ===
+window.addEventListener('paste', async (e) => {
+    if (!activeNoteId || currentView === 'trash') return;
     const items = (e.clipboardData || e.originalEvent.clipboardData).items;
     for (let index in items) {
-        const item = items[index];
-        if (item.kind === 'file') {
+        if (items[index].kind === 'file') {
             e.preventDefault();
-            await uploadImage(item.getAsFile());
+            await uploadImage(items[index].getAsFile());
         }
     }
 });
@@ -207,12 +174,12 @@ async function uploadImage(file) {
     const fd = new FormData();
     fd.append('image', file);
     
-    const originalTitle = document.getElementById('editor-title').value;
-    document.getElementById('editor-title').value = "Uploading image...";
+    const ogTitle = document.getElementById('editor-title').value;
+    document.getElementById('editor-title').value = "UPLOADING_MEDIA...";
     
     const newImg = await api('POST', `/${activeNoteId}/images`, fd, true);
+    document.getElementById('editor-title').value = ogTitle;
     
-    document.getElementById('editor-title').value = originalTitle;
     const note = localNotes.find(n => n._id === activeNoteId);
     note.images.push(newImg);
     renderImages(note.images);
@@ -221,40 +188,67 @@ async function uploadImage(file) {
 function renderImages(images) {
     const gallery = document.getElementById('image-gallery');
     gallery.innerHTML = '';
-    images.forEach(img => {
-        const card = document.createElement('div');
-        card.className = 'img-card';
-        card.innerHTML = `
-            <img src="${img.url}" onclick="openModal('${img.url}')">
-            <div class="meta">${img.width}x${img.height} | ${(img.sizeBytes/1024).toFixed(1)}KB</div>
-            <button title="Delete Image" onclick="deleteImage('${img._id}')">&times;</button>
-        `;
-        gallery.appendChild(card);
+    images.forEach(img => gallery.appendChild(createImageCard(img, true, activeNoteId)));
+}
+
+function renderGlobalGallery() {
+    const globalGrid = document.getElementById('global-image-grid');
+    globalGrid.innerHTML = '';
+    localNotes.forEach(note => {
+        note.images.forEach(img => globalGrid.appendChild(createImageCard(img, false, note._id)));
     });
 }
 
+function createImageCard(img, showDelete, noteId) {
+    const card = document.createElement('div');
+    card.className = 'img-card';
+    
+    // Load thumbUrl to save bandwidth, fallback to url if thumb failed generating
+    const displaySrc = img.thumbUrl || img.url; 
+    
+    let html = `
+        <img src="${displaySrc}" onclick="openModal('${img.url}', '${noteId}')">
+        <div class="meta">${(img.sizeBytes/1024).toFixed(1)}KB</div>
+    `;
+    if (showDelete) html += `<button title="Delete" onclick="deleteImage('${img._id}')">X</button>`;
+    
+    card.innerHTML = html;
+    return card;
+}
+
 async function deleteImage(imgId) {
-    if(confirm("Delete this image?")) {
-        const force = currentView === 'trash';
-        await api('DELETE', `/${activeNoteId}?imageId=${imgId}&force=${force}`);
-        const note = localNotes.find(n => n._id === activeNoteId);
-        note.images = note.images.filter(i => i._id !== imgId);
-        renderImages(note.images);
-    }
+    const force = currentView === 'trash';
+    await api('DELETE', `/${activeNoteId}?imageId=${imgId}&force=${force}`);
+    const note = localNotes.find(n => n._id === activeNoteId);
+    note.images = note.images.filter(i => i._id !== imgId);
+    renderImages(note.images);
 }
 
 // === LIGHTBOX LOGIC ===
 let currentModalUrl = '';
+let currentModalNoteId = null;
 
-function openModal(url) {
-    currentModalUrl = url;
-    document.getElementById('modal-img').src = url;
+function openModal(highResUrl, noteId) {
+    currentModalUrl = highResUrl;
+    currentModalNoteId = noteId;
+    document.getElementById('modal-img').src = highResUrl; // Load the heavy image only on click
+    
+    const jumpBtn = document.getElementById('btn-jump-note');
+    jumpBtn.style.display = (currentView === 'gallery' && noteId) ? 'flex' : 'none';
+    
     document.getElementById('image-modal').style.display = 'flex';
 }
 
 function closeModal() {
     document.getElementById('image-modal').style.display = 'none';
+    document.getElementById('modal-img').src = ''; // Clear memory
     currentModalUrl = '';
+}
+
+async function jumpToNote() {
+    closeModal();
+    await switchTab('active');
+    loadNoteEditor(currentModalNoteId);
 }
 
 async function copyModalImage() {
@@ -262,9 +256,9 @@ async function copyModalImage() {
         const response = await fetch(currentModalUrl);
         const blob = await response.blob();
         await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-        alert('Image copied to clipboard!');
+        alert('IMAGE_COPIED');
     } catch (err) {
-        alert('Clipboard API not fully supported in this browser. Try right-clicking the image.');
+        alert('CLIPBOARD_API_UNSUPPORTED');
     }
 }
 
@@ -273,6 +267,6 @@ async function downloadModalImage() {
     const blob = await response.blob();
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `VincentNote_Image_${Date.now()}.png`;
+    link.download = `Media_${Date.now()}.png`;
     link.click();
 }

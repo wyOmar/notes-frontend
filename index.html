@@ -3,61 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VincentNotes</title>
+    <title>VINCENT_NOTES</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="auth-layer">
-        <div class="auth-card">
-            <h2>VincentNotes</h2>
-            <input type="password" id="master-pwd" placeholder="Enter Master Key...">
-            <button onclick="authenticate()">Unlock Secure Vault</button>
-            <div id="error-message"></div>
-        </div>
+        <h2>SYSTEM_LOCKED</h2>
+        <input type="password" id="master-pwd" placeholder="INPUT MASTER KEY...">
+        <button onclick="authenticate()">AUTHENTICATE</button>
+        <div id="error-message"></div>
     </div>
 
     <div id="workspace" style="display: none;">
         <nav class="sidebar">
             <div class="sidebar-header">
-                <h3>My Notes</h3>
-                <button class="primary-btn" onclick="createNewNote()">+ New Note</button>
+                <h3>RECORDS</h3>
+                <button onclick="createNewNote()">+ NEW</button>
             </div>
             
-            <div class="sidebar-controls">
-                <input type="text" id="search-bar" placeholder="Search notes...">
-                <select id="sort-order" onchange="renderList()">
-                    <option value="edited-desc">Recently Edited</option>
-                    <option value="created-desc">Newest First</option>
-                    <option value="created-asc">Oldest First</option>
-                </select>
-            </div>
-
+            <input type="text" id="search-bar" placeholder="SEARCH...">
+            
             <div class="tabs">
-                <button id="tab-active" class="active" onclick="switchTab('active')">Active</button>
-                <button id="tab-trash" onclick="switchTab('trash')">Trash</button>
+                <button id="tab-active" class="active" onclick="switchTab('active')">ACTIVE</button>
+                <button id="tab-gallery" onclick="switchTab('gallery')">GALLERY</button>
             </div>
+            
             <div id="notes-list"></div>
+            <button id="tab-trash" class="trash-btn" onclick="switchTab('trash')">TRASH</button>
         </nav>
 
         <main class="editor-pane">
-            <div id="editor-empty">Select a note to start writing.</div>
+            <div id="editor-empty">> NO_RECORD_SELECTED</div>
+            
             <div id="editor-active" style="display: none;">
+                <div class="editor-meta" id="meta-display"></div>
+                <div class="editor-controls">
+                    <button id="btn-restore-note" style="display:none;" onclick="restoreActiveNote()">[ RESTORE_RECORD ]</button>
+                    <button id="btn-delete-note" onclick="deleteActiveNote()">[ DELETE_RECORD ]</button>
+                </div>
+                <input type="text" id="editor-title" placeholder="TITLE..." autocomplete="off">
+                <textarea id="editor-content" placeholder="RAW TEXT..."></textarea>
                 
-                <div class="document-sheet">
-                    <input type="text" id="editor-title" placeholder="Note Title..." autocomplete="off">
-                    <textarea id="editor-content" placeholder="Start typing... (Paste images directly here)"></textarea>
+                <div class="image-section">
+                    <div class="image-header">
+                        <h4>ATTACHED_MEDIA</h4>
+                        <input type="file" id="image-upload" accept="image/*" style="display:none;" onchange="handleManualUpload(event)">
+                        <button onclick="document.getElementById('image-upload').click()">[ UPLOAD_IMAGE ]</button>
+                    </div>
                     <div id="image-gallery"></div>
                 </div>
+            </div>
 
-                <div class="editor-footer">
-                    <div class="editor-meta" id="meta-display"></div>
-                    <div class="footer-actions">
-                        <input type="file" id="image-upload" accept="image/*" style="display:none;" onchange="handleManualUpload(event)">
-                        <button class="action-btn" onclick="document.getElementById('image-upload').click()">Attach Image</button>
-                        <button id="btn-restore-note" class="action-btn success-btn" style="display:none;" onclick="restoreActiveNote()">Restore Note</button>
-                        <button id="btn-delete-note" class="action-btn danger-btn" onclick="deleteActiveNote()">Delete Note</button>
-                    </div>
-                </div>
+            <div id="gallery-view" style="display: none;">
+                <h2>GLOBAL_MEDIA_GALLERY</h2>
+                <div id="global-image-grid"></div>
             </div>
         </main>
     </div>
@@ -67,8 +66,15 @@
             <span class="close-modal" onclick="closeModal()">&times;</span>
             <img id="modal-img" src="" alt="Full size preview">
             <div class="modal-actions">
-                <button onclick="copyModalImage()">Copy Image</button>
-                <button onclick="downloadModalImage()">Download Image</button>
+                <button onclick="copyModalImage()" title="Copy Image">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+                <button onclick="downloadModalImage()" title="Download Image">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                </button>
+                <button id="btn-jump-note" onclick="jumpToNote()" title="Go to Origin Note" style="display:none;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </button>
             </div>
         </div>
     </div>
