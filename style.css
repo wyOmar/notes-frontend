@@ -1,8 +1,90 @@
-body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
-.header { display: flex; justify-content: space-between; align-items: center; max-width: 600px; margin: 0 auto 20px; }
-button { background: #0078d4; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-button:hover { background: #005a9e; }
-.note-card { background: white; padding: 20px; border-radius: 10px; margin: 0 auto 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); max-width: 600px; }
-.note-title { margin-top: 0; color: #111; }
-.note-img { max-width: 100%; border-radius: 6px; margin-top: 15px; display: block; border: 1px solid #eee; }
-#error-message { color: #d13438; text-align: center; font-weight: bold; margin-bottom: 20px; }
+* { 
+    box-sizing: border-box; 
+    font-family: 'Courier New', Courier, monospace; 
+}
+body { 
+    background: #ffffff; 
+    color: #000000; 
+    margin: 0; 
+    padding: 20px; 
+    font-size: 16px; 
+}
+.header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    max-width: 800px; 
+    margin: 0 auto 20px; 
+    border-bottom: 2px solid #000000; 
+    padding-bottom: 10px; 
+}
+h1, h2 { 
+    text-transform: uppercase; 
+    margin: 0; 
+    letter-spacing: -1px;
+}
+button { 
+    background: #000000; 
+    color: #ffffff; 
+    border: 2px solid #000000; 
+    padding: 10px 20px; 
+    border-radius: 0; 
+    cursor: pointer; 
+    font-weight: bold; 
+    text-transform: uppercase; 
+}
+button:hover, button:active { 
+    background: #ffffff; 
+    color: #000000; 
+}
+input, textarea { 
+    width: 100%; 
+    border: 2px solid #000000; 
+    background: #ececec; 
+    color: #000000; 
+    padding: 10px; 
+    border-radius: 0; 
+    margin-bottom: 15px; 
+    outline: none; 
+}
+input:focus, textarea:focus { 
+    background: #ffffff; 
+}
+textarea { 
+    resize: vertical; 
+    min-height: 120px; 
+}
+.form-container { 
+    max-width: 800px; 
+    margin: 0 auto 40px; 
+    padding: 20px; 
+    border: 2px solid #000000; 
+    background: #fafafa; 
+    display: none; /* Displayed via JS */
+}
+.note-card { 
+    background: #ffffff; 
+    padding: 20px; 
+    border: 2px solid #000000; 
+    margin: 0 auto 20px; 
+    max-width: 800px; 
+}
+.note-title { 
+    border-bottom: 2px solid #000000; 
+    padding-bottom: 5px; 
+    margin-bottom: 15px; 
+}
+.note-img { 
+    max-width: 100%; 
+    border: 2px solid #000000; 
+    margin-top: 15px; 
+    display: block; 
+}
+#error-message { 
+    color: #000000; 
+    text-align: center; 
+    font-weight: bold; 
+    margin-bottom: 20px; 
+    background: #000000; 
+    color: #ffffff; 
+}

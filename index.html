@@ -3,16 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vincent's Secure Notes</title>
+    <title>VINCENT_NOTES // TERMINAL</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="header">
-        <h1>My Private Notes</h1>
-        <button id="login-btn" onclick="authenticateAndLoad()">Login</button>
+        <h1>VINCENT_NOTES</h1>
+        <button id="login-btn" onclick="authenticateAndLoad()">AUTHENTICATE</button>
     </div>
     
     <div id="error-message"></div>
+
+    <div class="form-container" id="create-form-container">
+        <h2>CREATE_RECORD</h2>
+        <form id="createNoteForm">
+            <input type="text" id="noteTitle" placeholder="INPUT TITLE..." required>
+            <textarea id="noteContent" placeholder="INPUT RAW TEXT..." required></textarea>
+            <input type="file" id="noteImage" accept="image/*">
+            <button type="submit">EXECUTE SAVE</button>
+        </form>
+    </div>
+
     <div id="notes-container"></div>
 
     <script src="app.js"></script>
