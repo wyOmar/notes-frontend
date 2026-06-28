@@ -3,29 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VINCENT_NOTES // TERMINAL</title>
+    <title>VINCENT_NOTES // WORKSPACE</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="header">
-        <h1>VINCENT_NOTES</h1>
-        <button id="login-btn" onclick="authenticateAndLoad()">AUTHENTICATE</button>
-    </div>
-    
-    <div id="error-message"></div>
-
-    <div class="form-container" id="create-form-container">
-        <h2>CREATE_RECORD</h2>
-        <form id="createNoteForm">
-            <input type="text" id="noteTitle" placeholder="INPUT TITLE..." required>
-            <textarea id="noteContent" placeholder="INPUT RAW TEXT..." required></textarea>
-            <input type="file" id="noteImage" accept="image/*">
-            <button type="submit">EXECUTE SAVE</button>
-        </form>
+    <div id="auth-layer">
+        <h2>SYSTEM_LOCKED</h2>
+        <input type="password" id="master-pwd" placeholder="INPUT MASTER KEY...">
+        <button onclick="authenticate()">AUTHENTICATE</button>
+        <div id="error-message"></div>
     </div>
 
-    <div id="notes-container"></div>
+    <div id="workspace" style="display: none;">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h3>RECORDS</h3>
+                <button onclick="createNewNote()">+ NEW</button>
+            </div>
+            <input type="text" id="search-bar" placeholder="SEARCH (e.g. text, after:2026-01-01)">
+            <div class="tabs">
+                <button id="tab-active" class="active" onclick="switchTab('active')">ACTIVE</button>
+                <button id="tab-trash" onclick="switchTab('trash')">TRASH</button>
+            </div>
+            <div id="notes-list"></div>
+        </nav>
 
+        <main class="editor-pane">
+            <div id="editor-empty">> NO_RECORD_SELECTED</div>
+            <div id="editor-active" style="display: none;">
+                <div class="editor-meta" id="meta-display"></div>
+                <input type="text" id="editor-title" placeholder="TITLE..." autocomplete="off">
+                <textarea id="editor-content" placeholder="RAW TEXT... (Paste images directly here)"></textarea>
+                
+                <div class="image-controls">
+                    <input type="file" id="image-upload" accept="image/*" style="display:none;" onchange="handleManualUpload(event)">
+                    <button onclick="document.getElementById('image-upload').click()">[ UPLOAD_IMAGE ]</button>
+                    <button id="btn-delete-note" onclick="deleteActiveNote()">[ DELETE_RECORD ]</button>
+                </div>
+                <div id="image-gallery"></div>
+            </div>
+        </main>
+    </div>
     <script src="app.js"></script>
 </body>
 </html>
