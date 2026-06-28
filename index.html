@@ -3,47 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VINCENT_NOTES // WORKSPACE</title>
+    <title>VincentNotes</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="auth-layer">
-        <h2>SYSTEM_LOCKED</h2>
-        <input type="password" id="master-pwd" placeholder="INPUT MASTER KEY...">
-        <button onclick="authenticate()">AUTHENTICATE</button>
-        <div id="error-message"></div>
+        <div class="auth-card">
+            <h2>VincentNotes</h2>
+            <input type="password" id="master-pwd" placeholder="Enter Master Key...">
+            <button onclick="authenticate()">Unlock Secure Vault</button>
+            <div id="error-message"></div>
+        </div>
     </div>
 
     <div id="workspace" style="display: none;">
         <nav class="sidebar">
             <div class="sidebar-header">
-                <h3>RECORDS</h3>
-                <button onclick="createNewNote()">+ NEW</button>
+                <h3>My Notes</h3>
+                <button class="primary-btn" onclick="createNewNote()">+ New Note</button>
             </div>
-            <input type="text" id="search-bar" placeholder="SEARCH (e.g. text, after:2026-01-01)">
+            
+            <div class="sidebar-controls">
+                <input type="text" id="search-bar" placeholder="Search notes...">
+                <select id="sort-order" onchange="renderList()">
+                    <option value="edited-desc">Recently Edited</option>
+                    <option value="created-desc">Newest First</option>
+                    <option value="created-asc">Oldest First</option>
+                </select>
+            </div>
+
             <div class="tabs">
-                <button id="tab-active" class="active" onclick="switchTab('active')">ACTIVE</button>
-                <button id="tab-trash" onclick="switchTab('trash')">TRASH</button>
+                <button id="tab-active" class="active" onclick="switchTab('active')">Active</button>
+                <button id="tab-trash" onclick="switchTab('trash')">Trash</button>
             </div>
             <div id="notes-list"></div>
         </nav>
 
         <main class="editor-pane">
-            <div id="editor-empty">> NO_RECORD_SELECTED</div>
+            <div id="editor-empty">Select a note to start writing.</div>
             <div id="editor-active" style="display: none;">
-                <div class="editor-meta" id="meta-display"></div>
-                <input type="text" id="editor-title" placeholder="TITLE..." autocomplete="off">
-                <textarea id="editor-content" placeholder="RAW TEXT... (Paste images directly here)"></textarea>
                 
-                <div class="image-controls">
-                    <input type="file" id="image-upload" accept="image/*" style="display:none;" onchange="handleManualUpload(event)">
-                    <button onclick="document.getElementById('image-upload').click()">[ UPLOAD_IMAGE ]</button>
-                    <button id="btn-delete-note" onclick="deleteActiveNote()">[ DELETE_RECORD ]</button>
+                <div class="document-sheet">
+                    <input type="text" id="editor-title" placeholder="Note Title..." autocomplete="off">
+                    <textarea id="editor-content" placeholder="Start typing... (Paste images directly here)"></textarea>
+                    <div id="image-gallery"></div>
                 </div>
-                <div id="image-gallery"></div>
+
+                <div class="editor-footer">
+                    <div class="editor-meta" id="meta-display"></div>
+                    <div class="footer-actions">
+                        <input type="file" id="image-upload" accept="image/*" style="display:none;" onchange="handleManualUpload(event)">
+                        <button class="action-btn" onclick="document.getElementById('image-upload').click()">Attach Image</button>
+                        <button id="btn-restore-note" class="action-btn success-btn" style="display:none;" onclick="restoreActiveNote()">Restore Note</button>
+                        <button id="btn-delete-note" class="action-btn danger-btn" onclick="deleteActiveNote()">Delete Note</button>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
+
+    <div id="image-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <img id="modal-img" src="" alt="Full size preview">
+            <div class="modal-actions">
+                <button onclick="copyModalImage()">Copy Image</button>
+                <button onclick="downloadModalImage()">Download Image</button>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>
