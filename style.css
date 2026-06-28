@@ -1,0 +1,8 @@
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+.header { display: flex; justify-content: space-between; align-items: center; max-width: 600px; margin: 0 auto 20px; }
+button { background: #0078d4; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+button:hover { background: #005a9e; }
+.note-card { background: white; padding: 20px; border-radius: 10px; margin: 0 auto 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); max-width: 600px; }
+.note-title { margin-top: 0; color: #111; }
+.note-img { max-width: 100%; border-radius: 6px; margin-top: 15px; display: block; border: 1px solid #eee; }
+#error-message { color: #d13438; text-align: center; font-weight: bold; margin-bottom: 20px; }
