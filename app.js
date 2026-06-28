@@ -5,6 +5,10 @@ let localNotes = [];
 let activeNoteId = null;
 let saveTimeout = null;
 
+// State Tracking to prevent phantom edits
+let loadedTitle = '';
+let loadedContent = '';
+
 function timeAgo(dateString) {
     if (!dateString) return "Unknown";
     const seconds = Math.floor((new Date() - new Date(dateString)) / 1000);
@@ -70,6 +74,9 @@ async function switchTab(tab) {
     document.getElementById('gallery-view').style.display = 'none';
     document.getElementById('app-sidebar').classList.remove('open'); 
 
+    // Reset search bar visually
+    document.getElementById('search-bar').value = '';
+
     if (tab === 'gallery') {
         await fetchNotes('active'); 
         document.getElementById('gallery-view').style.display = 'block';
@@ -83,7 +90,11 @@ async function switchTab(tab) {
     activeNoteId = null;
 }
 
-document.getElementById('search-bar').addEventListener('input', renderList);
+// Global Search Routing
+document.getElementById('search-bar').addEventListener('input', () => {
+    if (currentView === 'gallery') renderGlobalGallery();
+    else renderList();
+});
 
 function renderList() {
     if (currentView === 'gallery') return; 
@@ -125,6 +136,11 @@ function renderList() {
 function loadNoteEditor(id) {
     activeNoteId = id;
     const note = localNotes.find(n => n._id === id);
+    
+    // Set base state tracking to prevent phantom edits
+    loadedTitle = note.title || '';
+    loadedContent = note.content || '';
+
     renderList(); 
     document.getElementById('app-sidebar').classList.remove('open'); 
 
@@ -171,6 +187,13 @@ async function flushPendingSave(isAutoSave = false) {
     const title = document.getElementById('editor-title').value;
     const content = document.getElementById('editor-content').value;
     
+    // BUG FIX: Abort if no changes were actually made
+    if (title === loadedTitle && content === loadedContent) return;
+
+    // Update state tracking
+    loadedTitle = title;
+    loadedContent = content;
+
     const idx = localNotes.findIndex(n => n._id === idToSave);
     if (idx !== -1) {
         localNotes[idx].title = title;
@@ -264,14 +287,24 @@ function renderImages(images) {
 }
 
 function renderGlobalGallery() {
+    const query = document.getElementById('search-bar').value.toLowerCase();
     const globalGrid = document.getElementById('global-image-grid');
     globalGrid.innerHTML = '';
+    
     localNotes.forEach(note => {
-        note.images.forEach(img => globalGrid.appendChild(createImageCard(img, false, note._id)));
+        note.images.forEach(img => {
+            let searchable = "";
+            if (img.visionData) {
+                // Compile vision metadata into a searchable string block
+                searchable = JSON.stringify(img.visionData).toLowerCase();
+            }
+            if (!query || searchable.includes(query)) {
+                globalGrid.appendChild(createImageCard(img, false, note._id));
+            }
+        });
     });
 }
 
-// Helper: Renders the injected Vision HTML
 function renderVisionData(vision) {
     if (!vision) return '';
     let html = `<div class="vision-block">`;
@@ -299,13 +332,12 @@ function renderVisionData(vision) {
 function createImageCard(img, showDelete, noteId) {
     const card = document.createElement('div');
     card.className = 'img-card';
-    
     const displaySrc = img.thumbUrl || img.url; 
     
+    // Vision rendering explicitly removed from thumbnail view
     let html = `
-        <img src="${displaySrc}" onclick="openModal('${img.url}', '${noteId}')">
+        <img src="${displaySrc}" onclick="openModal('${noteId}', '${img._id}')">
         <div class="meta">${(img.sizeBytes/1024).toFixed(1)}KB</div>
-        ${renderVisionData(img.visionData)}
     `;
     
     if (showDelete) {
@@ -332,10 +364,17 @@ async function deleteImage(imgId) {
 let currentModalUrl = '';
 let currentModalNoteId = null;
 
-function openModal(highResUrl, noteId) {
-    currentModalUrl = highResUrl;
+function openModal(noteId, imgId) {
+    const note = localNotes.find(n => n._id === noteId);
+    if (!note) return;
+    const img = note.images.find(i => i._id === imgId);
+    if (!img) return;
+
+    currentModalUrl = img.url;
     currentModalNoteId = noteId;
-    document.getElementById('modal-img').src = highResUrl; 
+
+    document.getElementById('modal-img').src = img.url; 
+    document.getElementById('modal-vision-container').innerHTML = renderVisionData(img.visionData);
     
     const jumpBtn = document.getElementById('btn-jump-note');
     jumpBtn.style.display = (currentView === 'gallery' && noteId) ? 'flex' : 'none';
@@ -343,9 +382,13 @@ function openModal(highResUrl, noteId) {
     document.getElementById('image-modal').style.display = 'flex';
 }
 
-function closeModal() {
+function closeModal(e) {
+    // Only close if clicking exactly on the dark background or the button
+    if (e && e.target.id !== 'image-modal' && !e.target.classList.contains('close-modal')) return;
+    
     document.getElementById('image-modal').style.display = 'none';
     document.getElementById('modal-img').src = ''; 
+    document.getElementById('modal-vision-container').innerHTML = '';
     currentModalUrl = '';
 }
 

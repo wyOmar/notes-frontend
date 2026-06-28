@@ -83,10 +83,11 @@
         </main>
     </div>
 
-    <div id="image-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeModal()">&times;</span>
+    <div id="image-modal" class="modal" style="display: none;" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="close-modal" onclick="closeModal(event)">&times;</button>
             <img id="modal-img" src="" alt="Full size preview">
+            <div id="modal-vision-container"></div>
             <div class="modal-actions">
                 <button class="icon-btn" onclick="copyModalImage()" title="Copy Image">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
