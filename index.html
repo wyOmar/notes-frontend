@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>notes.vincentchan.uk</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -23,7 +23,7 @@
             
             <div class="sidebar-controls">
                 <input type="text" id="search-bar" placeholder="Search...">
-                <select id="sort-order" onchange="renderList()">
+                <select id="sort-order" onchange="handleSortChange()">
                     <option value="edited-desc">Recently Edited</option>
                     <option value="created-desc">Newest First</option>
                     <option value="created-asc">Oldest First</option>
@@ -52,7 +52,6 @@
                     <button class="icon-btn" onclick="cycleNote(1)" title="Next Note">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </button>
-                    
                     <button class="icon-btn" onclick="copyNoteContent(this)" title="Copy Raw Text">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     </button>

@@ -8,7 +8,6 @@ let saveTimeout = null;
 let loadedTitle = '';
 let loadedContent = '';
 
-// Gallery State for Lightbox Cycling
 let currentDisplayedImages = [];
 let currentModalImgId = null;
 
@@ -96,6 +95,16 @@ async function switchTab(tab) {
         activeNoteId = null;
         document.getElementById('gallery-view').style.display = 'none';
         renderList();
+    }
+}
+
+// Universal Sort Handler
+function handleSortChange() {
+    if (currentView === 'workspace' && !activeNoteId) renderGlobalGallery();
+    renderList();
+    if (activeNoteId) {
+        const note = localNotes.find(n => n._id === activeNoteId);
+        if(note) renderImages(note.images);
     }
 }
 
@@ -285,7 +294,6 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
-    // Modal Cycle Let/Right
     if (modalOpen) {
         if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
             const dir = e.key === 'ArrowRight' ? 1 : -1;
@@ -301,7 +309,6 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
-    // Note Up/Down Cycling
     if (activeNoteId && currentView !== 'trash') {
         const isTyping = document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA';
         if (!isTyping && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
@@ -311,20 +318,25 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
-    // Gallery Focus-Visible Grid Navigation
+    // Gallery Focus-Visible Grid Navigation (Fix: Allow start without initial focus)
     if (!activeNoteId && currentView === 'workspace') {
         const cards = Array.from(document.querySelectorAll('.img-card'));
         if (cards.length > 0) {
             if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                e.preventDefault();
+                
                 let idx = cards.indexOf(document.activeElement);
-                if (idx === -1) idx = 0;
-                else {
-                    if (e.key === 'ArrowRight') idx++;
-                    if (e.key === 'ArrowLeft') idx--;
-                    if (e.key === 'ArrowDown') idx += 4; 
-                    if (e.key === 'ArrowUp') idx -= 4;
+                if (idx === -1) {
+                    e.preventDefault();
+                    cards[0].focus();
+                    return;
                 }
+                
+                e.preventDefault();
+                if (e.key === 'ArrowRight') idx++;
+                if (e.key === 'ArrowLeft') idx--;
+                if (e.key === 'ArrowDown') idx += 4; 
+                if (e.key === 'ArrowUp') idx -= 4;
+                
                 if (idx < 0) idx = 0;
                 if (idx >= cards.length) idx = cards.length - 1;
                 cards[idx].focus();
@@ -369,7 +381,7 @@ async function uploadImage(file, targetId) {
     
     const localUrl = URL.createObjectURL(file);
     const tempId = 'temp-' + Date.now();
-    const tempImg = { _id: tempId, url: localUrl, thumbUrl: localUrl, sizeBytes: file.size, isTemp: true };
+    const tempImg = { _id: tempId, url: localUrl, thumbUrl: localUrl, sizeBytes: file.size, isTemp: true, uploadDate: new Date().toISOString() };
 
     let note;
     if (targetId === 'global') {
@@ -393,22 +405,32 @@ async function uploadImage(file, targetId) {
         if (activeNoteId === targetId) renderImages(note.images);
         else if (currentView === 'workspace' && !activeNoteId) renderGlobalGallery();
         
-        // BUG FIX 4 & 5: Silent Background Poll for Vision API Data
-        setTimeout(async () => {
+        // Fast Real-Time Polling for Vision API Data
+        let pollCount = 0;
+        const visionPoll = setInterval(async () => {
+            pollCount++;
+            if (pollCount > 10) return clearInterval(visionPoll); // Abort after 10 sec max
+            
             try {
-                await fetchNotes('workspace');
-                const updatedNote = localNotes.find(n => n._id === (targetId === 'global' ? note._id : targetId));
-                if (updatedNote) {
-                    if (activeNoteId === targetId) {
-                        renderImages(updatedNote.images);
-                    } else if (currentView === 'workspace' && !activeNoteId) {
-                        renderGlobalGallery();
+                const res = await fetch(`${API_URL}?trash=${currentView === 'trash'}`, { headers: { 'x-api-key': masterKey } });
+                if (!res.ok) return;
+                const freshNotes = await res.json();
+                const freshNote = freshNotes.find(n => n._id === (targetId === 'global' ? note._id : targetId));
+                
+                if (freshNote) {
+                    const freshImg = freshNote.images.find(i => i._id === newImg._id);
+                    if (freshImg && freshImg.visionData && Object.keys(freshImg.visionData).length > 0) {
+                        clearInterval(visionPoll);
+                        localNotes = freshNotes; 
+                        
+                        if (activeNoteId === targetId) renderImages(freshNote.images);
+                        else if (currentView === 'workspace' && !activeNoteId) renderGlobalGallery();
+                        
+                        if (currentModalImgId === newImg._id) openModal(freshNote._id, newImg._id);
                     }
-                    // Update modal if currently viewing this exact image
-                    if (currentModalImgId === newImg._id) openModal(updatedNote._id, newImg._id);
                 }
-            } catch(e) { console.error("Silent poll failed."); }
-        }, 5500);
+            } catch(e) { console.error("Poll cycle skip", e); }
+        }, 1000);
 
     } catch (err) {
         note.images = note.images.filter(i => i._id !== tempId);
@@ -420,8 +442,17 @@ async function uploadImage(file, targetId) {
 function renderImages(images) {
     currentDisplayedImages = [];
     const gallery = document.getElementById('image-gallery');
+    const sortOrder = document.getElementById('sort-order').value;
     gallery.innerHTML = '';
-    images.forEach(img => {
+    
+    // Sort logic respected inside notes
+    let sortedImages = [...images].sort((a, b) => {
+        const timeA = new Date(a.uploadDate || 0).getTime();
+        const timeB = new Date(b.uploadDate || 0).getTime();
+        return sortOrder.includes('desc') ? (timeB - timeA) : (timeA - timeB);
+    });
+
+    sortedImages.forEach(img => {
         currentDisplayedImages.push({ noteId: activeNoteId, imgId: img._id, url: img.url, visionData: img.visionData });
         gallery.appendChild(createImageCard(img, true, activeNoteId));
     });
@@ -431,27 +462,42 @@ function renderGlobalGallery() {
     currentDisplayedImages = [];
     const query = document.getElementById('search-bar').value.toLowerCase();
     const globalGrid = document.getElementById('global-image-grid');
+    const sortOrder = document.getElementById('sort-order').value;
     globalGrid.innerHTML = '';
+    
+    let allImages = [];
     
     localNotes.forEach(note => {
         note.images.forEach(img => {
-            let searchable = img.visionData ? JSON.stringify(img.visionData).toLowerCase() : "";
+            // Regex completely cleans out weightings e.g. "(0.89)" from search string
+            let searchable = img.visionData ? JSON.stringify(img.visionData).replace(/\(\d+\.\d+\)/g, '').toLowerCase() : "";
             if (!query || searchable.includes(query)) {
-                currentDisplayedImages.push({ noteId: note._id, imgId: img._id, url: img.url, visionData: img.visionData });
-                globalGrid.appendChild(createImageCard(img, true, note._id));
+                allImages.push({ noteId: note._id, img: img });
             }
         });
+    });
+
+    // Global Images Sorted
+    allImages.sort((a, b) => {
+        const timeA = new Date(a.img.uploadDate || 0).getTime();
+        const timeB = new Date(b.img.uploadDate || 0).getTime();
+        return sortOrder.includes('desc') ? (timeB - timeA) : (timeA - timeB);
+    });
+
+    allImages.forEach(item => {
+        currentDisplayedImages.push({ noteId: item.noteId, imgId: item.img._id, url: item.img.url, visionData: item.img.visionData });
+        globalGrid.appendChild(createImageCard(item.img, true, item.noteId));
     });
 }
 
 function renderVisionData(vision) {
     if (!vision) return '';
     let html = `<div class="vision-block">`;
-    if (vision.labels && vision.labels.length > 0) html += `<strong>Labels (≥0.7):</strong><pre>${vision.labels.join('\n')}</pre>`;
+    if (vision.labels && vision.labels.length > 0) html += `<strong>Labels:</strong><pre>${vision.labels.join('\n')}</pre>`;
     if (vision.text) html += `<strong>Text Detection:</strong><pre>${vision.text}</pre>`;
     if (vision.webGuesses && vision.webGuesses.length > 0) html += `<strong>Web Guesses:</strong><pre>${vision.webGuesses.join('\n')}</pre>`;
-    if (vision.webEntities && vision.webEntities.length > 0) html += `<strong>Web Entities (≥0.7):</strong><pre>${vision.webEntities.join('\n')}</pre>`;
-    if (vision.objects && vision.objects.length > 0) html += `<strong>Objects (≥0.7):</strong><pre>${vision.objects.join('\n')}</pre>`;
+    if (vision.webEntities && vision.webEntities.length > 0) html += `<strong>Web Entities:</strong><pre>${vision.webEntities.join('\n')}</pre>`;
+    if (vision.objects && vision.objects.length > 0) html += `<strong>Objects:</strong><pre>${vision.objects.join('\n')}</pre>`;
     html += `</div>`;
     return html === `<div class="vision-block"></div>` ? '' : html;
 }
