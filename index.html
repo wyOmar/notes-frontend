@@ -32,8 +32,13 @@
             
             <div id="notes-list"></div>
             
-            <button id="btn-workspace" class="trash-btn" onclick="switchTab('workspace')" style="display:none;">← Workspace</button>
-            <button id="tab-trash" class="trash-btn" onclick="switchTab('trash')">Trash</button>
+            <div class="sidebar-bottom">
+                <button id="btn-workspace" class="bottom-btn" onclick="switchTab('workspace')" style="display:none;">← Workspace</button>
+                <button id="tab-trash" class="bottom-btn" onclick="switchTab('trash')">Trash</button>
+                <button class="bottom-btn icon-only" onclick="logout()" title="Secure Logout">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </button>
+            </div>
         </nav>
 
         <main class="editor-pane">
@@ -44,35 +49,38 @@
             </div>
             
             <div id="editor-active" style="display: none;">
-                <div class="editor-meta" id="meta-display"></div>
-                <div class="editor-controls">
-                    <button class="icon-btn" onclick="cycleNote(-1)" title="Previous Note">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
-                    </button>
-                    <button class="icon-btn" onclick="cycleNote(1)" title="Next Note">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </button>
-                    <button class="icon-btn" onclick="copyNoteContent(this)" title="Copy Raw Text">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                    </button>
-                    <button class="icon-btn" id="btn-restore-note" style="display:none;" onclick="restoreActiveNote()" title="Restore Note">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
-                    </button>
-                    <button class="icon-btn danger" id="btn-delete-note" onclick="deleteActiveNote()" title="Delete Note">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                    </button>
+                <div class="editor-header">
+                    <div class="editor-meta" id="meta-display"></div>
+                    
+                    <div class="editor-controls">
+                        <button class="icon-btn" onclick="cycleNote(-1)" title="Previous Note">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                        </button>
+                        <button class="icon-btn" onclick="cycleNote(1)" title="Next Note">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        
+                        <input type="file" id="image-upload" accept="image/*" style="display:none;" onchange="handleManualUpload(event)">
+                        <button class="icon-btn" onclick="document.getElementById('image-upload').click()" title="Upload Attached Media">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                        </button>
+                        
+                        <button class="icon-btn" onclick="copyNoteContent(this)" title="Copy Raw Text">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                        <button class="icon-btn" id="btn-restore-note" style="display:none;" onclick="restoreActiveNote()" title="Restore Note">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                        </button>
+                        <button class="icon-btn danger" id="btn-delete-note" onclick="deleteActiveNote()" title="Delete Note">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
                 </div>
+
                 <input type="text" id="editor-title" placeholder="Title..." autocomplete="off">
                 <textarea id="editor-content" placeholder="Raw Text..."></textarea>
                 
                 <div class="image-section">
-                    <div class="image-header">
-                        <h4>Attached Media</h4>
-                        <input type="file" id="image-upload" accept="image/*" style="display:none;" onchange="handleManualUpload(event)">
-                        <button class="icon-btn" onclick="document.getElementById('image-upload').click()" title="Upload Image">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                        </button>
-                    </div>
                     <div id="image-gallery"></div>
                 </div>
             </div>
@@ -81,7 +89,7 @@
                 <div class="image-header" style="border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 25px;">
                     <h2 style="margin:0; border:none; padding:0;">Global Media</h2>
                     <input type="file" id="global-image-upload" accept="image/*" style="display:none;" onchange="handleManualUpload(event)">
-                    <button class="icon-btn" onclick="document.getElementById('global-image-upload').click()" title="Upload Image">
+                    <button class="icon-btn" onclick="document.getElementById('global-image-upload').click()" title="Upload Global Image">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                     </button>
                 </div>
@@ -92,20 +100,24 @@
 
     <div id="image-modal" class="modal" style="display: none;" onclick="closeModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <button class="close-modal" onclick="closeModal(event)">&times;</button>
+            <div class="modal-top-bar">
+                <div class="modal-actions">
+                    <button class="icon-btn" onclick="copyModalImage(this)" title="Copy Image">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
+                    <button class="icon-btn" onclick="downloadModalImage()" title="Download Image">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    </button>
+                    <button class="icon-btn" id="btn-jump-note" onclick="jumpToNote()" title="Go to Origin Note" style="display:none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    </button>
+                </div>
+                <button class="close-modal" onclick="closeModal(event)">&times;</button>
+            </div>
+            
+            <div id="modal-img-meta" class="modal-meta"></div>
             <img id="modal-img" src="" alt="Full size preview">
             <div id="modal-vision-container"></div>
-            <div class="modal-actions">
-                <button class="icon-btn" onclick="copyModalImage(this)" title="Copy Image">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                </button>
-                <button class="icon-btn" onclick="downloadModalImage()" title="Download Image">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                </button>
-                <button class="icon-btn" id="btn-jump-note" onclick="jumpToNote()" title="Go to Origin Note" style="display:none;">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                </button>
-            </div>
         </div>
     </div>
 

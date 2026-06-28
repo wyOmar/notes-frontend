@@ -27,26 +27,32 @@ button:hover, button.active { background: #000000; color: #ffffff; }
 .list-item { padding: 18px; border-bottom: 2px solid #000000; cursor: pointer; background: #ffffff; }
 .list-item:hover, .list-item.selected { background: #000000; color: #ffffff; }
 .list-item .meta-text { font-size: 13px; margin-top: 6px; opacity: 0.7; }
-.trash-btn { border: none; border-top: 2px solid #000000; padding: 18px; width: 100%; text-align: left; }
+
+/* Sidebar Bottom Row (Logout & Trash) */
+.sidebar-bottom { display: flex; border-top: 2px solid #000000; background: #ffffff; }
+.bottom-btn { border: none; padding: 18px; text-align: left; background: transparent; cursor: pointer; flex: 1; border-radius: 0; }
+.bottom-btn:hover { background: #000000; color: #ffffff; }
+.bottom-btn.icon-only { flex: none; border-left: 2px solid #000000; display: flex; align-items: center; justify-content: center; }
 
 .mobile-header { display: none; border-bottom: 2px solid #000000; }
 .editor-pane { flex: 1; display: flex; flex-direction: column; background: #ffffff; overflow-y: auto; overflow-x: hidden; }
 #editor-active { display: flex; flex-direction: column; height: 100%; max-width: 1000px; margin: 0 auto; width: 100%; padding: 30px; }
 
-.editor-meta { font-size: 14px; color: #000000; margin-bottom: 15px; border-bottom: 2px dotted #000000; padding-bottom: 8px; }
-.editor-controls { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-#editor-title { font-size: 28px; font-weight: bold; margin-bottom: 15px; border: none; border-bottom: 2px solid #000000; padding-left: 0; }
+/* Consolidated Inline Note Header */
+.editor-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000000; padding-bottom: 15px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+.editor-meta { font-size: 14px; color: #000000; margin: 0; }
+.editor-controls { display: flex; gap: 10px; flex-wrap: wrap; margin: 0; }
+
+#editor-title { font-size: 28px; font-weight: bold; margin-bottom: 15px; border: none; border-bottom: 2px dotted #000000; padding-left: 0; }
 #editor-content { flex: 1; resize: none; margin-bottom: 25px; min-height: 400px; border: none; padding: 0; font-size: 18px; line-height: 1.5; }
 
 .image-section { border-top: 2px solid #000000; padding-top: 20px; }
 .image-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
-.image-header h4 { margin: 0; font-size: 18px; }
 
 #image-gallery, #global-image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
 .img-card { border: 2px solid #000000; padding: 5px; position: relative; background: #ffffff; outline: none; transition: transform 0.1s; }
 .img-card:focus-visible { border: 2px solid #000000; box-shadow: 0 0 0 4px #000000; transform: scale(1.02); z-index: 10; }
 .img-card img { width: 100%; height: 140px; object-fit: cover; display: block; cursor: zoom-in; }
-.img-card .meta { font-size: 12px; background: #000000; color: #ffffff; padding: 5px; text-align: center; margin-top: 5px;}
 .img-card button { position: absolute; top: 5px; right: 5px; background: #ffffff; color: #000000; padding: 4px; border: 2px solid #000000; }
 .img-card button:hover { background: #ff0000; color: #ffffff; border-color: #ff0000; }
 .img-card.temp img { animation: pulse 1.5s infinite; opacity: 0.6; pointer-events: none; }
@@ -54,14 +60,19 @@ button:hover, button.active { background: #000000; color: #ffffff; }
 
 #gallery-view { max-width: 1000px; margin: 0 auto; width: 100%; padding: 30px; }
 
+/* Restructured Modal Framework */
 .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-.modal-content { background: #ffffff; padding: 30px; border: 2px solid #000000; max-width: 90vw; max-height: 95vh; overflow-y: auto; display: flex; flex-direction: column; align-items: center; position: relative; }
-.close-modal { position: absolute; top: 0; right: 0; background: #000000; color: #ffffff; font-size: 24px; font-weight: bold; cursor: pointer; border: none; padding: 5px 12px; z-index: 1001; }
-.close-modal:hover { background: #ff0000; }
-#modal-img { max-width: 100%; max-height: 50vh; object-fit: contain; margin-bottom: 15px; border: 2px solid #000000; }
-.modal-actions { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 15px; width: 100%; justify-content: center; }
+.modal-content { background: #ffffff; padding: 25px; border: 2px solid #000000; max-width: 90vw; max-height: 95vh; overflow-y: auto; display: flex; flex-direction: column; align-items: center; position: relative; }
 
-.vision-block { border-top: 2px dashed #000000; margin-top: 10px; padding-top: 10px; font-size: 12px; font-family: monospace; text-align: left; width: 100%; }
+.modal-top-bar { display: flex; justify-content: space-between; width: 100%; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #000000; padding-bottom: 15px; }
+.modal-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.close-modal { background: #000000; color: #ffffff; font-size: 24px; font-weight: bold; cursor: pointer; border: none; padding: 5px 12px; line-height: 1; }
+.close-modal:hover { background: #ff0000; }
+
+.modal-meta { font-size: 13px; font-family: monospace; width: 100%; text-align: left; margin-bottom: 15px; opacity: 0.8; font-weight: bold; }
+#modal-img { max-width: 100%; max-height: 50vh; object-fit: contain; border: 2px solid #000000; }
+
+.vision-block { margin-top: 15px; font-size: 12px; font-family: monospace; text-align: left; width: 100%; }
 .vision-block strong { background: #000000; color: #ffffff; padding: 2px 4px; display: block; margin: 10px 0 5px 0; }
 .vision-block pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: inherit; opacity: 0.8; }
 
@@ -70,5 +81,5 @@ button:hover, button.active { background: #000000; color: #ffffff; }
     .sidebar.open { transform: translateX(100%); }
     .mobile-header { display: flex; justify-content: flex-start; padding: max(15px, env(safe-area-inset-top)) 20px 15px 20px; align-items: center;}
     #editor-active, #gallery-view { padding: 15px; }
-    .modal-content { max-width: 95vw; padding: 40px 10px 20px 10px; }
+    .modal-content { max-width: 95vw; padding: 20px; }
 }

@@ -13,6 +13,15 @@ let currentModalImgId = null;
 
 const TICK_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 
+// Check local cache on load
+window.onload = () => {
+    const savedKey = localStorage.getItem('notesMasterKey');
+    if (savedKey) {
+        document.getElementById('master-pwd').value = savedKey;
+        authenticate();
+    }
+};
+
 function showTick(btn) {
     const og = btn.innerHTML;
     btn.innerHTML = TICK_SVG;
@@ -43,18 +52,25 @@ function formatExactDate(dateString) {
 
 function toggleSidebar() { document.getElementById('app-sidebar').classList.toggle('open'); }
 
+function logout() {
+    localStorage.removeItem('notesMasterKey');
+    location.reload();
+}
+
 async function authenticate() {
     masterKey = document.getElementById('master-pwd').value;
     if (!masterKey) return;
     document.getElementById('error-message').innerText = 'Decrypting...';
     try {
         await fetchNotes('workspace');
+        localStorage.setItem('notesMasterKey', masterKey); // Save on success
         document.getElementById('auth-layer').style.display = 'none';
         document.getElementById('workspace').style.display = 'flex';
         renderList();
         renderGlobalGallery();
     } catch (e) {
         document.getElementById('error-message').innerText = 'Access Denied.';
+        localStorage.removeItem('notesMasterKey');
     }
 }
 
@@ -77,8 +93,8 @@ async function switchTab(tab) {
     flushPendingSave(); 
     currentView = tab;
     
-    document.getElementById('tab-trash').style.display = tab === 'trash' ? 'none' : 'block';
     document.getElementById('btn-workspace').style.display = tab === 'trash' ? 'block' : 'none';
+    document.getElementById('tab-trash').style.display = tab === 'trash' ? 'none' : 'block';
     
     document.getElementById('editor-active').style.display = 'none';
     document.getElementById('app-sidebar').classList.remove('open'); 
@@ -98,7 +114,6 @@ async function switchTab(tab) {
     }
 }
 
-// Universal Sort Handler
 function handleSortChange() {
     if (currentView === 'workspace' && !activeNoteId) renderGlobalGallery();
     renderList();
@@ -318,12 +333,10 @@ document.addEventListener('keydown', (e) => {
         return;
     }
 
-    // Gallery Focus-Visible Grid Navigation (Fix: Allow start without initial focus)
     if (!activeNoteId && currentView === 'workspace') {
         const cards = Array.from(document.querySelectorAll('.img-card'));
         if (cards.length > 0) {
             if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                
                 let idx = cards.indexOf(document.activeElement);
                 if (idx === -1) {
                     e.preventDefault();
@@ -405,11 +418,10 @@ async function uploadImage(file, targetId) {
         if (activeNoteId === targetId) renderImages(note.images);
         else if (currentView === 'workspace' && !activeNoteId) renderGlobalGallery();
         
-        // Fast Real-Time Polling for Vision API Data
         let pollCount = 0;
         const visionPoll = setInterval(async () => {
             pollCount++;
-            if (pollCount > 10) return clearInterval(visionPoll); // Abort after 10 sec max
+            if (pollCount > 10) return clearInterval(visionPoll);
             
             try {
                 const res = await fetch(`${API_URL}?trash=${currentView === 'trash'}`, { headers: { 'x-api-key': masterKey } });
@@ -445,7 +457,6 @@ function renderImages(images) {
     const sortOrder = document.getElementById('sort-order').value;
     gallery.innerHTML = '';
     
-    // Sort logic respected inside notes
     let sortedImages = [...images].sort((a, b) => {
         const timeA = new Date(a.uploadDate || 0).getTime();
         const timeB = new Date(b.uploadDate || 0).getTime();
@@ -469,7 +480,6 @@ function renderGlobalGallery() {
     
     localNotes.forEach(note => {
         note.images.forEach(img => {
-            // Regex completely cleans out weightings e.g. "(0.89)" from search string
             let searchable = img.visionData ? JSON.stringify(img.visionData).replace(/\(\d+\.\d+\)/g, '').toLowerCase() : "";
             if (!query || searchable.includes(query)) {
                 allImages.push({ noteId: note._id, img: img });
@@ -477,7 +487,6 @@ function renderGlobalGallery() {
         });
     });
 
-    // Global Images Sorted
     allImages.sort((a, b) => {
         const timeA = new Date(a.img.uploadDate || 0).getTime();
         const timeB = new Date(b.img.uploadDate || 0).getTime();
@@ -502,16 +511,15 @@ function renderVisionData(vision) {
     return html === `<div class="vision-block"></div>` ? '' : html;
 }
 
+// Meta div is completely removed from the image card
 function createImageCard(img, showDelete, noteId) {
     const card = document.createElement('div');
     card.className = `img-card ${img.isTemp ? 'temp' : ''}`;
     card.tabIndex = 0; 
     const displaySrc = img.thumbUrl || img.url; 
     
-    let html = `
-        <img src="${displaySrc}" onclick="${img.isTemp ? '' : `openModal('${noteId}', '${img._id}')`}">
-        <div class="meta">${(img.sizeBytes/1024).toFixed(1)}KB</div>
-    `;
+    let html = `<img src="${displaySrc}" onclick="${img.isTemp ? '' : `openModal('${noteId}', '${img._id}')`}">`;
+    
     if (showDelete && !img.isTemp) {
         html += `<button title="Delete Media" onclick="deleteImage('${img._id}', '${noteId}')">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -545,6 +553,12 @@ function openModal(noteId, imgId) {
     currentModalNoteId = noteId;
     currentModalImgId = imgId;
 
+    // Build the dynamic Image Meta string
+    const sizeFormatted = img.sizeBytes ? (img.sizeBytes > 1048576 ? (img.sizeBytes/1048576).toFixed(2) + ' MB' : (img.sizeBytes/1024).toFixed(1) + ' KB') : 'Unknown Size';
+    const resStr = img.width && img.height ? `${img.width}x${img.height}px` : 'Unknown Resolution';
+    const dateStr = img.uploadDate ? formatExactDate(img.uploadDate) : 'Unknown Date';
+    
+    document.getElementById('modal-img-meta').innerText = `Uploaded: ${dateStr} | Size: ${sizeFormatted} | Res: ${resStr}`;
     document.getElementById('modal-img').src = img.url; 
     document.getElementById('modal-vision-container').innerHTML = renderVisionData(img.visionData);
     
