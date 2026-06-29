@@ -12,15 +12,38 @@ let currentDisplayedImages = [];
 let currentModalImgId = null;
 
 const TICK_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+const SUN_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+const MOON_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
 
 // Check local cache on load
 window.onload = () => {
+    // Theme Initializer
+    const savedTheme = localStorage.getItem('notesTheme');
+    applyTheme(savedTheme === 'light');
+
+    // Auth Initializer
     const savedKey = localStorage.getItem('notesMasterKey');
     if (savedKey) {
         document.getElementById('master-pwd').value = savedKey;
         authenticate();
     }
 };
+
+function applyTheme(isLight) {
+    if (isLight) {
+        document.body.classList.add('light-mode');
+        document.getElementById('theme-icon-container').innerHTML = MOON_SVG; 
+    } else {
+        document.body.classList.remove('light-mode');
+        document.getElementById('theme-icon-container').innerHTML = SUN_SVG; 
+    }
+}
+
+function toggleTheme() {
+    const isLight = document.body.classList.contains('light-mode');
+    localStorage.setItem('notesTheme', !isLight ? 'light' : 'dark');
+    applyTheme(!isLight);
+}
 
 function showTick(btn) {
     const og = btn.innerHTML;
@@ -63,7 +86,7 @@ async function authenticate() {
     document.getElementById('error-message').innerText = 'Decrypting...';
     try {
         await fetchNotes('workspace');
-        localStorage.setItem('notesMasterKey', masterKey); // Save on success
+        localStorage.setItem('notesMasterKey', masterKey); 
         document.getElementById('auth-layer').style.display = 'none';
         document.getElementById('workspace').style.display = 'flex';
         renderList();
@@ -511,7 +534,6 @@ function renderVisionData(vision) {
     return html === `<div class="vision-block"></div>` ? '' : html;
 }
 
-// Meta div is completely removed from the image card
 function createImageCard(img, showDelete, noteId) {
     const card = document.createElement('div');
     card.className = `img-card ${img.isTemp ? 'temp' : ''}`;
@@ -553,7 +575,6 @@ function openModal(noteId, imgId) {
     currentModalNoteId = noteId;
     currentModalImgId = imgId;
 
-    // Build the dynamic Image Meta string
     const sizeFormatted = img.sizeBytes ? (img.sizeBytes > 1048576 ? (img.sizeBytes/1048576).toFixed(2) + ' MB' : (img.sizeBytes/1024).toFixed(1) + ' KB') : 'Unknown Size';
     const resStr = img.width && img.height ? `${img.width}x${img.height}px` : 'Unknown Resolution';
     const dateStr = img.uploadDate ? formatExactDate(img.uploadDate) : 'Unknown Date';
